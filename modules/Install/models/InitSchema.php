@@ -69,9 +69,14 @@ class Install_InitSchema_Model {
 					$oldVersion = $newVersion;
 					break;
 				}
+				// Fix version numbering
+				if (strlen($oldVersion."") < 3) $oldVersion .= "0";
+				if (strlen($newVersion."") < 3) $newVersion .= "0";
+
 				$oldVersion = str_replace(array('.', ' '), '', $oldVersion);
 				$newVersion = str_replace(array('.', ' '), '', $newVersion);
 				$filename =  "modules/Migration/schema/".$oldVersion."_to_".$newVersion.".php";
+				
 				if(is_file($filename)) {
 					include($filename);
 				}
@@ -901,6 +906,7 @@ class Install_InitSchema_Model {
 		Vtiger_Cron::register( 'SendReminder', 'cron/SendReminder.service', 900, 'Calendar', 1, 3, 'Recommended frequency for SendReminder is 15 mins');
 		Vtiger_Cron::register( 'ScheduleReports', 'cron/modules/Reports/ScheduleReports.service', 900, 'Reports', 1, 4, 'Recommended frequency for ScheduleReports is 15 mins');
 		Vtiger_Cron::register( 'MailScanner', 'cron/MailScanner.service', 900, 'Settings', 1, 5, 'Recommended frequency for MailScanner is 15 mins');
+		Vtiger_Cron::register( 'Oauth2TokenRefresher', "cron/modules/Oauth2/TokenRefresher.service", 45 * 60, 1, 0, 'Recommended frequency for TokenRefresher is 45 mins');
 	}
 
 	/**

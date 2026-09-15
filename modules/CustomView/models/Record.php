@@ -221,17 +221,19 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 		}
 		$transformedSearchParams = Vtiger_Util_Helper::transferListSearchParamsToFilterCondition($searchParams, $moduleModel);
 		$glue = "";
-		if(count($queryGenerator->getWhereFields()) > 0 && (count($transformedSearchParams)) > 0) {
+		if(php7_count($queryGenerator->getWhereFields()) > 0 && (php7_count($transformedSearchParams)) > 0) {
 			$glue = QueryGenerator::$AND;
 		}
 		$queryGenerator->parseAdvFilterList($transformedSearchParams, $glue);
 
 		$listQuery = $queryGenerator->getQuery();
+		$params = array();
+
 		if($module == 'RecycleBin'){
 			$listQuery = preg_replace("/vtiger_crmentity.deleted\s*=\s*0/i", 'vtiger_crmentity.deleted = 1', $listQuery);
 		}
 
-		if($skipRecords && !empty($skipRecords) && is_array($skipRecords) && count($skipRecords) > 0) {
+		if($skipRecords && !empty($skipRecords) && is_array($skipRecords) && php7_count($skipRecords) > 0) {
 			$listQuery .= ' AND '.$baseTableName.'.'.$baseTableId.' NOT IN ('. generateQuestionMarks($skipRecords) .')';
             $params = array($skipRecords);
 		}
@@ -308,7 +310,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 
 		$selectedColumnsList = $this->get('columnslist');
 		if(!empty($selectedColumnsList)) {
-			$noOfColumns = count($selectedColumnsList);
+			$noOfColumns = php7_count($selectedColumnsList);
 			for($i=0; $i<$noOfColumns; $i++) {
 				$columnSql = 'INSERT INTO vtiger_cvcolumnlist (cvid, columnindex, columnname) VALUES (?,?,?)';
 				$columnParams = array($cvId, $i, $selectedColumnsList[$i]);
@@ -354,7 +356,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 				if(empty($groupInfo)) continue;
 
 				$groupColumns = $groupInfo['columns'];
-				$groupCondition = $groupInfo['condition'];
+				$groupCondition = isset($groupInfo['condition'])?$groupInfo['condition']:null;
 
 				foreach($groupColumns as $columnIndex => $columnCondition) {
 					if(empty($columnCondition)) continue;
@@ -368,7 +370,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 					$columnInfo = explode(":",$advFilterColumn);
 					$fieldName = $columnInfo[2];
 					preg_match('/(\w+) ; \((\w+)\) (\w+)/', $fieldName, $matches);
-					if (count($matches) != 0) {
+					if (php7_count($matches) != 0) {
 						list($full, $referenceParentField, $referenceModule, $referenceFieldName) = $matches;
 					}
 					if($referenceParentField) {
@@ -400,7 +402,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 					$specialDateConditions = Vtiger_Functions::getSpecialDateTimeCondtions();
 					if(($fieldType == 'date' || ($fieldType == 'time' && $fieldName != 'time_start' && $fieldName != 'time_end') || ($fieldType == 'datetime')) && ($fieldType != '' && $advFitlerValue != '' ) && !in_array($advFilterComparator, $specialDateConditions)) {
 						$val = Array();
-						for($x=0;$x<count($temp_val);$x++) {
+						for($x=0;$x<php7_count($temp_val);$x++) {
 							//if date and time given then we have to convert the date and
 							//leave the time as it is, if date only given then temp_time
 							//value will be empty
@@ -444,7 +446,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 					$advFilterList[$groupIndex]["conditionexpression"] = $groupConditionExpression;
 				}
 
-				$groupConditionExpression = $advFilterList[$groupIndex]["conditionexpression"];
+				$groupConditionExpression = isset($advFilterList[$groupIndex]["conditionexpression"]);
 				if(empty($groupConditionExpression)) continue; // Case when the group doesn't have any column criteria
 
 				$advGroupSql = 'INSERT INTO vtiger_cvadvfilter_grouping(groupid,cvid,group_condition,condition_expression) VALUES (?,?,?,?)';
@@ -457,13 +459,14 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 			$db->pquery('DELETE FROM vtiger_cv2group WHERE cvid=?',array($cvId));
 			$db->pquery('DELETE FROM vtiger_cv2role WHERE cvid=?',array($cvId));
 			$db->pquery('DELETE FROM vtiger_cv2rs WHERE cvid=?',array($cvId));
-			$members = $this->get('members',array());
+			$members = $this->get('members');
+			if (!$members) $members = array();
 
-			$noOfMembers = count($members);
+			$noOfMembers = php7_count($members);
 			for ($i = 0; $i < $noOfMembers; ++$i) {
 				$id = $members[$i];
 				$idComponents = Settings_Groups_Member_Model::getIdComponentsFromQualifiedId($id);
-				if ($idComponents && count($idComponents) == 2) {
+				if ($idComponents && php7_count($idComponents) == 2) {
 					$memberType = $idComponents[0];
 					$memberId = $idComponents[1];
 
@@ -488,7 +491,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 		if(!empty($selectedColumnsList)) {
 			$db = PearDatabase::getInstance();
 			$cvId = $this->getId();
-			$noOfColumns = count($selectedColumnsList);
+			$noOfColumns = php7_count($selectedColumnsList);
 			for($i=0; $i<$noOfColumns; $i++) {
 				$columnSql = 'INSERT INTO vtiger_cvcolumnlist (cvid, columnindex, columnname) VALUES (?,?,?)';
 				$columnParams = array($cvId, $i, $selectedColumnsList[$i]);
@@ -549,7 +552,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 	 */
 	public function getStandardCriteria() {
 		$db = PearDatabase::getInstance();
-
+		$stdfilterlist = array();
 		$cvId = $this->getId();
 		if(empty($cvId)) {
 			return array();
@@ -637,7 +640,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 				$moduleModel = $this->getModule();
 				$moduleName = $moduleModel->get('name');
 				preg_match('/(\w+) ; \((\w+)\) (\w+)/', $fieldName, $matches);
-				if (count($matches) != 0) {
+				if (php7_count($matches) != 0) {
 					list($full, $referenceParentField, $referenceModule, $referenceFieldName) = $matches;
 				}
 				if ($referenceParentField) {
@@ -668,7 +671,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 				$specialDateConditions = Vtiger_Functions::getSpecialDateTimeCondtions();
 				if (($col[4] == 'D' || ($col[4] == 'T' && $col[1] != 'time_start' && $col[1] != 'time_end') || ($col[4] == 'DT')) && !in_array($criteria['comparator'],$specialDateConditions)) {
 					$val = Array();
-					for ($x = 0; $x < count($temp_val); $x++) {
+					for ($x = 0; $x < php7_count($temp_val); $x++) {
 						if(empty($temp_val[$x])) {
 							$val[$x] = '';
 						} else if ($col[4] == 'D') {
@@ -824,6 +827,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 		$nextweek1 = date("Y-m-d", strtotime("+1 week Saturday"));
 
 		$next7days = date("Y-m-d", mktime(0, 0, 0, date("m"), date("d") + 6, date("Y")));
+		$next14days = date("Y-m-d", mktime(0, 0, 0, date("m"), date("d") + 13, date("Y")));
 		$next30days = date("Y-m-d", mktime(0, 0, 0, date("m"), date("d") + 29, date("Y")));
 		$next60days = date("Y-m-d", mktime(0, 0, 0, date("m"), date("d") + 59, date("Y")));
 		$next90days = date("Y-m-d", mktime(0, 0, 0, date("m"), date("d") + 89, date("Y")));
@@ -897,6 +901,9 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 		} elseif ($type == "next7days") {
 			$dateValues[0] = $today;
 			$dateValues[1] = $next7days;
+		} elseif ($type == "next14days") {
+			$dateValues[0] = $today;
+			$dateValues[1] = $next14days;
 		} elseif ($type == "next30days") {
 			$dateValues[0] = $today;
 			$dateValues[1] = $next30days;
@@ -980,6 +987,8 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 				'last60days' => array('label' => 'LBL_LAST_60_DAYS'),
 				'last90days' => array('label' => 'LBL_LAST_90_DAYS'),
 				'last120days' => array('label' => 'LBL_LAST_120_DAYS'),
+				'next7days' => array('label' => 'LBL_NEXT_7_DAYS'),
+				'next14days' => array('label' => 'LBL_NEXT_14_DAYS'),
 				'next30days' => array('label' => 'LBL_NEXT_30_DAYS'),
 				'next60days' => array('label' => 'LBL_NEXT_60_DAYS'),
 				'next90days' => array('label' => 'LBL_NEXT_90_DAYS'),
@@ -1199,7 +1208,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 			$columns = $group['columns'];
 			$and = $or = 0;
 			$block = $group['condition'];
-			if(count($columns) != 1) {
+			if(php7_count($columns) != 1) {
 				foreach($columns as $column) {
 					if($column['column_condition'] == 'and') {
 						++$and;
@@ -1207,7 +1216,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 						++$or;
 					}
 				}
-				if($and == count($columns)-1 && count($columns) != 1) {
+				if($and == php7_count($columns)-1 && php7_count($columns) != 1) {
 					$allGroupColumns = array_merge($allGroupColumns, $group['columns']);
 				} else {
 					$anyGroupColumns = array_merge($anyGroupColumns, $group['columns']);

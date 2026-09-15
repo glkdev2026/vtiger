@@ -38,7 +38,7 @@
 						{foreach item=RELATED_LINK from=$RELATED_LIST_LINKS['LISTVIEWBASIC']}
 							<div class="btn-group">
 								{assign var=DROPDOWNS value=$RELATED_LINK->get('linkdropdowns')}
-								{if count($DROPDOWNS) gt 0}
+								{if php7_count($DROPDOWNS) gt 0}
 									<div class="btn-group">
 										<a class="btn dropdown-toggle" href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" data-delay="200" data-close-others="false" style="width:20px;height:18px;">
 											<img title="{$RELATED_LINK->getLabel()}" alt="{$RELATED_LINK->getLabel()}" src="{vimage_path("{$RELATED_LINK->getIcon()}")}">
@@ -146,8 +146,12 @@
 										{if $HEADER_FIELD->get('column') eq 'time_start' or $HEADER_FIELD->get('column') eq 'time_end' or $HEADER_FIELD->getFieldDataType() eq 'reference'}
 										{else}
 											{assign var=FIELD_UI_TYPE_MODEL value=$HEADER_FIELD->getUITypeModel()}
-											{include file=vtemplate_path($FIELD_UI_TYPE_MODEL->getListSearchTemplateName(),$RELATED_MODULE_NAME) FIELD_MODEL= $HEADER_FIELD SEARCH_INFO=$SEARCH_DETAILS[$HEADER_FIELD->getName()] USER_MODEL=$USER_MODEL}
-											<input type="hidden" class="operatorValue" value="{$SEARCH_DETAILS[$HEADER_FIELD->getName()]['comparator']}">
+											{assign var=FIELD_SEARCH_INFO value=array("searchValue" => "", "comparator" => "")}
+											{if isset($SEARCH_DETAILS[$HEADER_FIELD->getName()])}
+												{assign var=FIELD_SEARCH_INFO value=$SEARCH_DETAILS[$HEADER_FIELD->getName()]}
+											{/if}
+											{include file=vtemplate_path($FIELD_UI_TYPE_MODEL->getListSearchTemplateName(),$RELATED_MODULE_NAME) FIELD_MODEL= $HEADER_FIELD SEARCH_INFO= $FIELD_SEARCH_INFO USER_MODEL=$USER_MODEL}
+											<input type="hidden" class="operatorValue" value="{$FIELD_SEARCH_INFO['comparator']}">
 										{/if}
 									</th>
 								{/foreach}

@@ -49,7 +49,7 @@ class ListViewSession {
 		return 1;
 	}
 
-	function getRequestStartPage(){
+	public static function getRequestStartPage(){
 		$start = $_REQUEST['start'];
 		if(!is_numeric($start)){
 			$start = 1;
@@ -75,10 +75,12 @@ class ListViewSession {
 		}
 		$cv = new CustomView();
 		$viewId = $cv->getViewId($currentModule);
+		$recordNavigationInfo = array();
+		$searchKey = array();
 		if(!empty($_SESSION[$currentModule.'_DetailView_Navigation'.$viewId])){
 			$recordNavigationInfo = Zend_Json::decode($_SESSION[$currentModule.'_DetailView_Navigation'.$viewId]);
 			$pageNumber =0;
-			if(count($recordNavigationInfo) == 1){
+			if(php7_count($recordNavigationInfo) == 1){
 				foreach ($recordNavigationInfo as $recordIdList) {
 					if(in_array($currentRecordId,$recordIdList)){
 						$reUseData = true;
@@ -92,18 +94,18 @@ class ListViewSession {
 						$recordList[] = $recordId;
 						$recordPageMapping[$recordId] = $start;
 						if($recordId == $currentRecordId){
-							$searchKey = count($recordList)-1;
+							$searchKey = php7_count($recordList)-1;
 							$_REQUEST['start'] = $start;
 						}
 					}
 				}
-				if($searchKey > $displayBufferRecordCount -1 && $searchKey < count($recordList)-$displayBufferRecordCount){
+				if($searchKey > $displayBufferRecordCount -1 && $searchKey < php7_count($recordList)-$displayBufferRecordCount){
 					$reUseData= true;
 				}
 			}
 		}
 
-		$list_query = $_SESSION[$currentModule.'_listquery'];
+		$list_query = isset($_SESSION[$currentModule.'_listquery'])?$_SESSION[$currentModule.'_listquery']:'';
 
 		if($reUseData === false && !empty($list_query)){
 			$recordNavigationInfo = array();
@@ -166,7 +168,7 @@ class ListViewSession {
 			$recordNavigationInfo = array();
 			if($searchKey !== false){
 				foreach ($navigationRecordList as $index => $recordId) {
-					if(!is_array($recordNavigationInfo[$current])){
+					if(!isset($recordNavigationInfo[$current])){
 						$recordNavigationInfo[$current] = array();
 					}
 					if($index == $firstPageRecordCount  || $index == ($firstPageRecordCount+$pageCount * $list_max_entries_per_page)){
@@ -182,7 +184,7 @@ class ListViewSession {
 		return $recordNavigationInfo;
 	}
 
-	function getRequestCurrentPage($currentModule, $query, $viewid, $queryMode = false) {
+	static function getRequestCurrentPage($currentModule, $query, $viewid, $queryMode = false) {
 		global $list_max_entries_per_page, $adb;
 		$start = 1;
 		if(isset($_REQUEST['query']) && $_REQUEST['query'] == 'true'&& $_REQUEST['start']!="last"){
@@ -221,7 +223,7 @@ class ListViewSession {
 		$_SESSION[$currentModule.'_listquery'] = $query;
 	}
 
-	function hasViewChanged($currentModule) {
+	static function hasViewChanged($currentModule) {
 		if(empty($_SESSION['lvs'][$currentModule]['viewname'])) return true;
 		if(empty($_REQUEST['viewname'])) return false;
 		if($_REQUEST['viewname'] != $_SESSION['lvs'][$currentModule]['viewname']) return true;

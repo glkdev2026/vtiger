@@ -111,7 +111,7 @@ $allow_exports = 'all';
 
 // files with one of these extensions will have '.txt' appended to their filename on upload
 // upload_badext default value = php, php3, php4, php5, pl, cgi, py, asp, cfm, js, vbs, html, htm
-$upload_badext = array('php', 'php3', 'php4', 'php5', 'pl', 'cgi', 'py', 'asp', 'cfm', 'js', 'vbs', 'html', 'htm', 'exe', 'bin', 'bat', 'sh', 'dll', 'phps', 'phtml', 'xhtml', 'rb', 'msi', 'jsp', 'shtml', 'sth', 'shtm');
+$upload_badext = array('php', 'php3', 'php4', 'php5', 'pl', 'cgi', 'py', 'asp', 'cfm', 'js', 'vbs', 'html', 'htm', 'exe', 'bin', 'bat', 'sh', 'dll', 'phps', 'phtml', 'xhtml', 'rb', 'msi', 'jsp', 'shtml', 'sth', 'shtm', 'htaccess', 'phar');
 
 // list_max_entries_per_page default value = 20
 $list_max_entries_per_page = '20';
@@ -174,6 +174,9 @@ if(isset($default_timezone) && function_exists('date_default_timezone_set')) {
 
 //Set the default layout 
 $default_layout = 'v7';
+
+//Maximum Listview Fields Selection Size
+$maxListFieldsSelectionSize = 15;
 
 include_once 'config.security.php';
 ?>

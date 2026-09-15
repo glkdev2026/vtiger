@@ -71,7 +71,7 @@
 					throw new WebServiceException(WebServiceErrorCode::$ACCESSDENIED,
 						"Permission to access reference type is denied ".$referenceObject->getEntityName());
 				}
-			}else if($element[$fieldName] !== NULL){
+			}else if(array_key_exists($fieldName, $element) && $element[$fieldName] !== NULL){
 				unset($element[$fieldName]);
 			}
 		}
@@ -79,7 +79,7 @@
 		$meta->hasMandatoryFields($element);
 		
 		$ownerFields = $meta->getOwnerFields();
-		if(is_array($ownerFields) && sizeof($ownerFields) >0){
+		if(is_array($ownerFields) && php7_sizeof($ownerFields) >0){
 			foreach($ownerFields as $ownerField){
 				if(isset($element[$ownerField]) && $element[$ownerField]!==null && 
 					!$meta->hasAssignPrivilege($element[$ownerField])){

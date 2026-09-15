@@ -21,7 +21,7 @@ class Vtiger_Deprecated {
 		$entity_field_info = getEntityFieldNames($module);
 		$fieldsName = $entity_field_info['fieldname'];
 		$name = '';
-		if ($rowdata != '' && count($rowdata) > 0) {
+		if ($rowdata != '' && php7_count($rowdata) > 0) {
 			$name = self::getCurrentUserEntityFieldNameDisplay($module, $fieldsName, $rowdata );
 		}
 		$name = textlength_check($name);
@@ -42,11 +42,11 @@ class Vtiger_Deprecated {
 		} else {
 			$accessibleFieldNames = array();
 			foreach($fieldsName as $field) {
-				if($module == 'Users' || getColumnVisibilityPermission($current_user->id, $field, $module) == '0') {
+				if($module == 'Users' || getColumnVisibilityPermission($current_user->id, $field, $module) == '0' && isset($fieldValues[$field])) {
 					$accessibleFieldNames[] = $fieldValues[$field];
 				}
 			}
-			if(count($accessibleFieldNames) > 0) {
+			if(php7_count($accessibleFieldNames) > 0) {
 				return implode(' ', $accessibleFieldNames);
 			}
 		}
@@ -295,6 +295,7 @@ class Vtiger_Deprecated {
 
 	static function getAnnouncements() {
 		global $adb;
+		$announcement = "";
 		$sql = " select * from vtiger_announcement inner join vtiger_users on vtiger_announcement.creatorid=vtiger_users.id";
 		$sql.=" AND vtiger_users.is_admin='on' AND vtiger_users.status='Active' AND vtiger_users.deleted = 0";
 		$result = $adb->pquery($sql, array());
@@ -341,7 +342,7 @@ class Vtiger_Deprecated {
 
 	static function SaveTagCloudView($id = "") {
 		global $adb;
-		$tag_cloud_status = $_REQUEST['tagcloudview'];
+		$tag_cloud_status = isset($_REQUEST['tagcloudview']) ? $_REQUEST['tagcloudview'] : false;
 		if ($tag_cloud_status == "true") {
 			$tag_cloud_view = 0;
 		} else {
@@ -621,6 +622,6 @@ class Vtiger_Deprecated {
 	static function return_app_list_strings_language($language, $module='Vtiger') {
 		require_once 'includes/runtime/LanguageHandler.php';
 		$strings = Vtiger_Language_Handler::getModuleStringsFromFile($language, $module);
-		return $strings['languageStrings'];
+		return isset($strings['languageStrings']) ? $strings['languageStrings'] : [];
 	}
 }

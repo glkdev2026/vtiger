@@ -64,12 +64,15 @@ function isReferenceUIType($uitype) {
 }
 
 function IsDateField($reportColDetails) {
-	list($tablename, $colname, $module_field, $fieldname, $typeOfData) = split(":", $reportColDetails);
-	if ($typeOfData == "D") {
-		return true;
-	} else {
-		return false;
+	if (substr_count($reportColDetails, ':') >= 4) {
+		list($tablename, $colname, $module_field, $fieldname, $typeOfData) = explode(':', $reportColDetails);
+		if ($typeOfData == "D") {
+			return true;
+		} else {
+			return false;
+		}
 	}
+	return false;
 }
 
 /**
@@ -113,7 +116,7 @@ function getReportFieldValue ($report, $picklistArray, $dbField, $valueArray, $f
 		$field = WebserviceField::fromArray($db, $fieldInfo);
 		$fieldType = $field->getFieldDataType();
 	}
-	if(is_object($field) &&	$field->getUIType() == 401){
+	if(isset($field) && is_object($field) && $field->getUIType() == 401){
 		if ($value) {
 			$value = explode('_', $value);
 			$module = 'RecurringInvoice';
@@ -189,6 +192,13 @@ function getReportFieldValue ($report, $picklistArray, $dbField, $valueArray, $f
 	} elseif( $fieldType == "datetime" && !empty($value)) {
 		$date = new DateTimeField($value);
 		$fieldvalue = $date->getDisplayDateTimeValue();
+		$userModel = Users_Privileges_Model::getCurrentUserModel();
+			if($userModel->get('hour_format') == '12'){
+				$time_parts = explode(" ", $fieldvalue);
+				$time = $time_parts[1];
+				$value = Vtiger_Time_UIType::getTimeValueInAMorPM($time);
+				$fieldvalue = $time_parts[0].' '.$value;
+			}	
 	} elseif( $fieldType == 'time' && !empty($value) && $field->getFieldName()
 			!= 'duration_hours') {
 		if($field->getFieldName() == "time_start" || $field->getFieldName() == "time_end") {
@@ -219,14 +229,21 @@ function getReportFieldValue ($report, $picklistArray, $dbField, $valueArray, $f
 	} elseif ($fieldType == 'double' && $operation != 'ExcelExport') {
         if($current_user->truncate_trailing_zeros == true)
             $fieldvalue = decimalFormat($fieldvalue);
-    }
+	} else {
+		// special fields
+		if ( ($report->primarymodule == "Emails" && $dbField->name == "Date_Sent") || $dbField->name == "Emails_Date_Sent") {
+			$fieldvalue = DateTimeField::convertToUserFormat($fieldvalue);
+		}
+	}
+
     if($fieldType == 'currency' && $value == "" && $operation != 'ExcelExport'){
         $currencyField = new CurrencyField($value);
         $fieldvalue = $currencyField->getDisplayValue();
         return $fieldvalue;
     } else if($fieldvalue == "" && $operation != 'ExcelExport') {
         return "";
-    }
+	}
+
 	$fieldvalue = str_replace("<", "&lt;", $fieldvalue);
 	$fieldvalue = str_replace(">", "&gt;", $fieldvalue);
 	$fieldvalue = decode_html($fieldvalue);
@@ -241,7 +258,7 @@ function getReportFieldValue ($report, $picklistArray, $dbField, $valueArray, $f
 	}
 
 	// Added to render html tag for description fields
-	if($fieldInfo['uitype'] == '19' && ($module == 'Documents' || $module == 'Emails')) {
+	if(isset($fieldInfo['uitype']) && $fieldInfo['uitype'] == '19' && ($module == 'Documents' || $module == 'Emails')) {
 		return $fieldvalue;
 	}
         if($operation == 'ExcelExport') {
@@ -284,7 +301,7 @@ function transformAdvFilterListToDBFormat($advFilterList) {
             if(($columnInfo[4] == 'D' || ($columnInfo[4] == 'T' && $columnInfo[1] != 'time_start' && $columnInfo[1] != 'time_end') ||
                             ($columnInfo[4] == 'DT')) && ($columnInfo[4] != '' && $advFilterValue != '' ) && !in_array($advFilterComparator, $specialDateConditions)) {
                 $val = Array();
-                for($i=0; $i<count($tempVal); $i++) {
+                for($i=0; $i<php7_count($tempVal); $i++) {
                     if(trim($tempVal[$i]) != '') {
                         $date = new DateTimeField(trim($tempVal[$i]));
                         if($columnInfo[4] == 'D') {
@@ -345,7 +362,7 @@ function getReportSearchCondition($searchParams, $filterId) {
 					array_push($params, $value);
 				}
 			}
-			if ($i < (count($searchParams) - 1)) {
+			if ($i < (php7_count($searchParams) - 1)) {
 				$conditionQuery .= ' AND ';
 			}
 		}

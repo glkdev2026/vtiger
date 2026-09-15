@@ -15,6 +15,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 
+		<link type='text/css' rel='stylesheet' href='{vresource_url("libraries/bootstrap-legacy/css/bootstrap-responsive.min.css")}'> {* .row-fluid... *}
 		<link type='text/css' rel='stylesheet' href='{vresource_url("layouts/v7/lib/todc/css/bootstrap.min.css")}'>
 		<link type='text/css' rel='stylesheet' href='{vresource_url("layouts/v7/lib/todc/css/docs.min.css")}'>
 		<link type='text/css' rel='stylesheet' href='{vresource_url("layouts/v7/lib/todc/css/todc-bootstrap.min.css")}'>
@@ -30,8 +31,9 @@
         <link type='text/css' rel='stylesheet' href='{vresource_url("layouts/v7/lib/jquery/daterangepicker/daterangepicker.css")}'>
         
         <input type="hidden" id="inventoryModules" value={ZEND_JSON::encode($INVENTORY_MODULES)}>
-        
+        {if isset($SELECTED_MENU_CATEGORY)}
         {assign var=V7_THEME_PATH value=Vtiger_Theme::getv7AppStylePath($SELECTED_MENU_CATEGORY)}
+        {/if}
         {if strpos($V7_THEME_PATH,".less")!== false}
             <link type="text/css" rel="stylesheet/less" href="{vresource_url($V7_THEME_PATH)}" media="screen" />
         {else}
@@ -52,7 +54,7 @@
 		<script src="{vresource_url('layouts/v7/lib/jquery/jquery.min.js')}"></script>
 		<script src="{vresource_url('layouts/v7/lib/jquery/jquery-migrate-1.4.1.js')}"></script>
 		<script type="text/javascript">
-			var _META = { 'module': "{$MODULE}", view: "{$VIEW}", 'parent': "{$PARENT_MODULE}", 'notifier':"{$NOTIFIER_URL}", 'app':"{$SELECTED_MENU_CATEGORY}" };
+			var _META = { 'module': "{$MODULE}", view: "{$VIEW}", 'parent': "{$PARENT_MODULE}", 'notifier':"{$NOTIFIER_URL}", 'app':"{if isset($SELECTED_MENU_CATEGORY)} {$SELECTED_MENU_CATEGORY}{/if}" };
             {if $EXTENSION_MODULE}
                 var _EXTENSIONMETA = { 'module': "{$EXTENSION_MODULE}", view: "{$EXTENSION_VIEW}"};
             {/if}
@@ -60,7 +62,7 @@
             {if $CURRENT_USER_MODEL}
                _USERMETA =  { 'id' : "{$CURRENT_USER_MODEL->get('id')}", 'menustatus' : "{$CURRENT_USER_MODEL->get('leftpanelhide')}", 
                               'currency' : "{decode_html($USER_CURRENCY_SYMBOL)}", 'currencySymbolPlacement' : "{$CURRENT_USER_MODEL->get('currency_symbol_placement')}",
-                          'currencyGroupingPattern' : "{$CURRENT_USER_MODEL->get('currency_grouping_pattern')}", 'truncateTrailingZeros' : "{$CURRENT_USER_MODEL->get('truncate_trailing_zeros')}",'userlabel':"{decode_html($CURRENT_USER_MODEL->get('userlabel'))}",};
+                          'currencyGroupingPattern' : "{$CURRENT_USER_MODEL->get('currency_grouping_pattern')}", 'truncateTrailingZeros' : "{$CURRENT_USER_MODEL->get('truncate_trailing_zeros')}",'userlabel':"{($CURRENT_USER_MODEL->get('userlabel'))|escape:html}",};
             {/if}
 		</script>
 	</head>

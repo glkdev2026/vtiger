@@ -19,6 +19,11 @@ class Users_Login_Action extends Vtiger_Action_Controller {
 	} 
 
 	function process(Vtiger_Request $request) {
+		if ($_SERVER["REQUEST_METHOD"] != "POST") {
+			echo "Invalid request";
+			exit();
+		}
+
 		$username = $request->get('username');
 		$password = $request->getRaw('password');
 
@@ -36,6 +41,7 @@ class Users_Login_Action extends Vtiger_Action_Controller {
 			$_SESSION['authenticated_user_id'] = $userid;
 			$_SESSION['app_unique_key'] = vglobal('application_unique_key');
 			$_SESSION['authenticated_user_language'] = vglobal('default_language');
+			$_SESSION['authenticated_user_skin'] = $request->get('skin');
 
 			//Enabled session variable for KCFINDER 
 			$_SESSION['KCFINDER'] = array(); 

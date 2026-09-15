@@ -13,6 +13,7 @@ class Reports_List_View extends Vtiger_Index_View {
 	protected $listViewHeaders = false;
 	protected $listViewEntries = false;
 	protected $listViewCount   = false;
+	protected $listviewinitcalled = false;
 
 	function preProcess(Vtiger_Request $request, $display=true) {
 		parent::preProcess($request, false);
@@ -98,11 +99,15 @@ class Reports_List_View extends Vtiger_Index_View {
 	}
 
 	public function initializeListViewContents(Vtiger_Request $request) {
-		$moduleName = $request->getModule();
-		$viewer = $this->getViewer($request);
-		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
 
-		$folderId = $request->get('viewname');
+		if($this->listviewinitcalled){
+			return;
+		}
+			$moduleName = $request->getModule();
+			$viewer = $this->getViewer($request);
+			$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
+
+			$folderId = $request->get('viewname');
 		if(empty($folderId) || $folderId == 'undefined'){
 			$folderId = Vtiger_ListView_Model::getSortParamsSession($moduleName.'_folderId');
 			if(empty($folderId)) {
@@ -115,7 +120,7 @@ class Reports_List_View extends Vtiger_Index_View {
 		$orderBy = $request->get('orderby');
 		$sortOrder = $request->get('sortorder');
 		$searchParams = $request->get('search_params');
-		$searchParams = $searchParams[0];
+		$searchParams = isset($searchParams[0]) ? $searchParams[0] : '';
 
 		$orderParams = Vtiger_ListView_Model::getSortParamsSession($moduleName.'_'.$folderId);
 		if($request->get('mode') == 'removeSorting') {
@@ -165,7 +170,7 @@ class Reports_List_View extends Vtiger_Index_View {
 
 		$viewer->assign('MODULE', $moduleName);
 		  // preProcess is already loading this, we can reuse
-		if(!$this->pagingModel){
+		if(!property_exists($this, 'pagingModel') || !$this->pagingModel){
 			$pagingModel = new Vtiger_Paging_Model();
 			$pagingModel->set('page', $pageNumber);
 		} else{
@@ -180,7 +185,7 @@ class Reports_List_View extends Vtiger_Index_View {
 		if(!$this->listViewEntries){
 			$this->listViewEntries = $listViewModel->getListViewEntries($pagingModel);
 		}
-		$noOfEntries = count($this->listViewEntries);
+		$noOfEntries = php7_count($this->listViewEntries);
 		$viewer->assign('PAGE_NUMBER',$pageNumber);
 		$viewer->assign('LISTVIEW_ENTRIES_COUNT',$noOfEntries);
 		$viewer->assign('LISTVIEW_HEADERS', $this->listViewHeaders);
@@ -198,7 +203,7 @@ class Reports_List_View extends Vtiger_Index_View {
 		$viewer->assign('SEARCH_DETAILS', array());
 		$viewer->assign('LISTVIEW_MODEL',$listViewModel);
 		$viewer->assign('PAGING_MODEL', $pagingModel);
-		if(!$this->pagingModel){
+		if(!property_exists($this, 'pagingModel') || !$this->pagingModel){
 			$this->pagingModel = $pagingModel;
 		}
 
@@ -234,7 +239,9 @@ class Reports_List_View extends Vtiger_Index_View {
 			}
 		}
 		$viewer->assign('DASHBOARD_TABS', $activeTabs);
-	}
+
+		$this->listviewinitcalled=true;  // to make a early exit if it is called more than once
+}
 
 	/**
 	 * Function returns the number of records for the current filter

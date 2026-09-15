@@ -73,19 +73,6 @@ class Install_Utils_Model {
 			$directiveValues['max_execution_time'] = ini_get('max_execution_time');
 		if (ini_get('memory_limit') < 32)
 			$directiveValues['memory_limit'] = ini_get('memory_limit');
-			$errorReportingValue = E_WARNING & ~E_NOTICE;
-                if(version_compare(PHP_VERSION, '5.5.0') >= 0){
-                    $errorReportingValue = E_WARNING & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT;
-                }
-                else if(version_compare(PHP_VERSION, '5.3.0') >= 0) {
-			$errorReportingValue = E_WARNING & ~E_NOTICE & ~E_DEPRECATED;
-		}
-		if (ini_get('error_reporting') != $errorReportingValue)
-			$directiveValues['error_reporting'] = 'NOT RECOMMENDED';
-		if (ini_get('log_errors') == '1' || stripos(ini_get('log_errors'), 'On') > -1)
-			$directiveValues['log_errors'] = 'On';
-		if (ini_get('short_open_tag') == '1' || stripos(ini_get('short_open_tag'), 'On') > -1)
-			$directiveValues['short_open_tag'] = 'On';
 
 		return $directiveValues;
 	}
@@ -101,10 +88,7 @@ class Install_Utils_Model {
 		'register_globals' => 'On',
 		'output_buffering' => 'On',
 		'max_execution_time' => '0',
-		'memory_limit' => '32',
-		'error_reporting' => 'E_WARNING & ~E_NOTICE',
-		'log_errors' => 'Off',
-		'short_open_tag' => 'Off'
+		'memory_limit' => '32'
 	);
 
 	/**
@@ -112,12 +96,6 @@ class Install_Utils_Model {
 	 * @return type
 	 */
 	public static function getRecommendedDirectives(){
-            if(version_compare(PHP_VERSION, '5.5.0') >= 0){
-                self::$recommendedDirectives['error_reporting'] = 'E_WARNING & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT';
-            }
-	    else if(version_compare(PHP_VERSION, '5.3.0') >= 0) {
-			self::$recommendedDirectives['error_reporting'] = 'E_WARNING & ~E_NOTICE & ~E_DEPRECATED';
-		}
 		return self::$recommendedDirectives;
 	}
 
@@ -128,7 +106,7 @@ class Install_Utils_Model {
 	public static function getSystemPreInstallParameters() {
 		$preInstallConfig = array();
 		// Name => array( System Value, Recommended value, supported or not(true/false) );
-		$preInstallConfig['LBL_PHP_VERSION']	= array(phpversion(), '5.4.0+, 7.0', (version_compare(phpversion(), '5.4.0', '>=')));
+		$preInstallConfig['LBL_PHP_VERSION']	= array(phpversion(), '7.0+,8.0+', (version_compare(phpversion(), '7.0', '>=')));
 		//$preInstallConfig['LBL_IMAP_SUPPORT']	= array(function_exists('imap_open'), true, (function_exists('imap_open') == true));
 		$preInstallConfig['LBL_ZLIB_SUPPORT']	= array(function_exists('gzinflate'), true, (function_exists('gzinflate') == true));
 
@@ -378,6 +356,11 @@ class Install_Utils_Model {
 
 		//Checking for database connection parameters
 		if($db_type) {
+			// Backward compatible mode for adodb library.
+			if ($db_type == 'mysqli') {
+				mysqli_report(MYSQLI_REPORT_ALL ^ MYSQLI_REPORT_STRICT ^ MYSQLI_REPORT_INDEX);
+			}
+			
 			$conn = NewADOConnection($db_type);
 			$db_type_status = true;
 			if(@$conn->Connect($db_hostname,$db_username,$db_password)) {
@@ -386,6 +369,7 @@ class Install_Utils_Model {
 				if(self::isMySQL($db_type)) {
 					$mysql_server_version = self::getMySQLVersion($serverInfo);
 				}
+				$conn->Execute("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'"); /* force friendly mode */
 				$db_sqlmode_support = self::isMySQLSqlModeFriendly($conn);
 				if($create_db && $db_sqlmode_support) {
 					// drop the current database if it exists
@@ -400,6 +384,7 @@ class Install_Utils_Model {
 					$db_creation_failed = true;
 					$createdb_conn = NewADOConnection($db_type);
 					if(@$createdb_conn->Connect($db_hostname, $root_user, $root_password)) {
+						$createdb_conn->Execute("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'"); /* force friendly mode */
 						$query = "CREATE DATABASE ".$db_name;
 						if($create_utf8_db == 'true') {
 							if(self::isMySQL($db_type))
@@ -432,7 +417,7 @@ class Install_Utils_Model {
 			$error_msg_info = getTranslatedString('MSG_LIST_REASONS', 'Install').':<br>
 					-  '.getTranslatedString('MSG_DB_PARAMETERS_INVALID', 'Install').'
 					-  '.getTranslatedString('MSG_DB_USER_NOT_AUTHORIZED', 'Install');
-		} elseif(self::isMySQL($db_type) && $mysql_server_version < 4.1) {
+		} elseif(self::isMySQL($db_type) && version_compare($mysql_server_version,4.1,'<')) {
 			$error_msg = $mysql_server_version.' -> '.getTranslatedString('ERR_INVALID_MYSQL_VERSION', 'Install');
 		} elseif(!$db_sqlmode_support) {
 			$error_msg = getTranslatedString('ERR_DB_SQLMODE_NOTFRIENDLY', 'Install');
@@ -466,7 +451,7 @@ class Install_Utils_Model {
 			if ($handle = opendir($moduleFolder)) {
 				while (false !== ($file = readdir($handle))) {
 					$packageNameParts = explode(".",$file);
-					if($packageNameParts[count($packageNameParts)-1] != 'zip'){
+					if($packageNameParts[php7_count($packageNameParts)-1] != 'zip'){
 						continue;
 					}
 					array_pop($packageNameParts);
@@ -488,5 +473,14 @@ class Install_Utils_Model {
 				closedir($handle);
 			}
 		}
+	}
+
+	/* 
+	 * Register installed user detail to inform about product updates and news.
+	 */
+	public static function registerUser($name, $email, $industry) {
+		require_once 'vtlib/Vtiger/Net/Client.php';
+		$client = new Vtiger_Net_Client("https://stats.vtiger.com/register.php");
+		@$client->doPost(array("name" => $name, "email" => $email, "industry" => $industry), 5);
 	}
 }

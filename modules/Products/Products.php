@@ -14,6 +14,7 @@ class Products extends CRMEntity {
 	var $table_name = 'vtiger_products';
 	var $table_index= 'productid';
 	var $column_fields = Array();
+	var $isWorkFlowFieldUpdate;
 
 	/**
 	 * Mandatory table for supporting custom fields.
@@ -87,18 +88,19 @@ class Products extends CRMEntity {
 	function save_module($module)
 	{
 		//Inserting into product_taxrel table
-		if($_REQUEST['ajxaction'] != 'DETAILVIEW' && $_REQUEST['action'] != 'ProcessDuplicates' && !$this->isWorkFlowFieldUpdate)
+		if(((isset($_REQUEST['ajxaction']) && $_REQUEST['ajxaction'] != 'DETAILVIEW') || !isset($_REQUEST['ajxaction'])) && 
+		   ((isset($_REQUEST['action']) && $_REQUEST['action'] != 'ProcessDuplicates') || !isset($_REQUEST['action'])) && !$this->isWorkFlowFieldUpdate)
 		{
-			if ($_REQUEST['ajxaction'] != 'CurrencyUpdate') {
+			if ((isset($_REQUEST['ajxaction']) && $_REQUEST['ajxaction'] != 'CurrencyUpdate') || !isset($_REQUEST["ajxaction"])) {
 				$this->insertTaxInformation('vtiger_producttaxrel', 'Products');
 			}
 
-			if ($_REQUEST['action'] != 'MassEditSave' ) {
+			if ((isset($_REQUEST['action']) && $_REQUEST['action'] != 'MassEditSave') || !isset($_REQUEST['action'])) {
 				$this->insertPriceInformation('vtiger_productcurrencyrel', 'Products');
 			}
 		}
 
-		if($_REQUEST['action'] == 'SaveAjax' && isset($_REQUEST['base_currency']) && isset($_REQUEST['unit_price'])){
+		if((isset($_REQUEST['action']) && $_REQUEST['action'] == 'SaveAjax') && isset($_REQUEST['base_currency']) && isset($_REQUEST['unit_price'])){
 			$this->insertPriceInformation('vtiger_productcurrencyrel', 'Products');
 		}
 		// Update unit price value in vtiger_productcurrencyrel
@@ -122,26 +124,26 @@ class Products extends CRMEntity {
 		$tax_per = '';
 		//Save the Product - tax relationship if corresponding tax check box is enabled
 		//Delete the existing tax if any
-		if($this->mode == 'edit' && $_REQUEST['action'] != 'MassEditSave')
+		if($this->mode == 'edit' && (isset($_REQUEST['action']) && $_REQUEST['action'] != 'MassEditSave'))
 		{
-			for($i=0;$i<count($tax_details);$i++)
+			for($i=0;$i<php7_count($tax_details);$i++)
 			{
 				$taxid = getTaxId($tax_details[$i]['taxname']);
 				$sql = "DELETE FROM vtiger_producttaxrel WHERE productid=? AND taxid=?";
 				$adb->pquery($sql, array($this->id,$taxid));
 			}
 		}
-		for($i=0;$i<count($tax_details);$i++)
+		for($i=0;$i<php7_count($tax_details);$i++)
 		{
 			$tax_name = $tax_details[$i]['taxname'];
 			$tax_checkname = $tax_details[$i]['taxname']."_check";
-			if($_REQUEST[$tax_checkname] == 'on' || $_REQUEST[$tax_checkname] == 1)
+			if(isset($_REQUEST[$tax_checkname]) && ($_REQUEST[$tax_checkname] == 'on' || $_REQUEST[$tax_checkname] == 1))
 			{
 				$taxid = getTaxId($tax_name);
 				$tax_per = $_REQUEST[$tax_name];
 
-				$taxRegions = $_REQUEST[$tax_name.'_regions'];
-				if ($taxRegions || $_REQUEST[$tax_name.'_defaultPercentage'] != '') {
+				$taxRegions = isset($_REQUEST[$tax_name.'_regions']) ? $_REQUEST[$tax_name.'_regions']:"";
+				if ($taxRegions || (isset($_REQUEST[$tax_name.'_defaultPercentage']) && $_REQUEST[$tax_name.'_defaultPercentage'] != '')) {
 					$tax_per = $_REQUEST[$tax_name.'_defaultPercentage'];
 				} else {
 					$taxRegions = array();
@@ -155,7 +157,7 @@ class Products extends CRMEntity {
 
 				$log->debug("Going to save the Product - $tax_name tax relationship");
 
-				if ($_REQUEST['action'] === 'MassEditSave') {
+				if (isset($_REQUEST['action']) && $_REQUEST['action'] === 'MassEditSave') {
 					$adb->pquery('DELETE FROM vtiger_producttaxrel WHERE productid=? AND taxid=?', array($this->id, $taxid));
 				}
 
@@ -181,9 +183,9 @@ class Products extends CRMEntity {
 		$currency_details = getAllCurrencies('all');
 
 		//Delete the existing currency relationship if any
-		if($this->mode == 'edit' && $_REQUEST['action'] !== 'CurrencyUpdate')
+		if($this->mode == 'edit' && (isset($_REQUEST['action']) && $_REQUEST['action'] !== 'CurrencyUpdate'))
 		{
-			for($i=0;$i<count($currency_details);$i++)
+			for($i=0;$i<php7_count($currency_details);$i++)
 			{
 				$curid = $currency_details[$i]['curid'];
 				$sql = "delete from vtiger_productcurrencyrel where productid=? and currencyid=?";
@@ -194,7 +196,7 @@ class Products extends CRMEntity {
 		$product_base_conv_rate = getBaseConversionRateForProduct($this->id, $this->mode);
 		$currencySet = 0;
 		//Save the Product - Currency relationship if corresponding currency check box is enabled
-		for($i=0;$i<count($currency_details);$i++)
+		for($i=0;$i<php7_count($currency_details);$i++)
 		{
 			$curid = $currency_details[$i]['curid'];
 			$curname = $currency_details[$i]['currencylabel'];
@@ -204,10 +206,11 @@ class Products extends CRMEntity {
 			$requestPrice = CurrencyField::convertToDBFormat($_REQUEST['unit_price'], null, true);
 			$actualPrice = CurrencyField::convertToDBFormat($_REQUEST[$cur_valuename], null, true);
 			$isQuickCreate = false;
-			if($_REQUEST['action']=='SaveAjax' && isset($_REQUEST['base_currency']) && $_REQUEST['base_currency'] == $cur_valuename){
+			if((isset($_REQUEST['action']) && $_REQUEST['action'] =='SaveAjax') && isset($_REQUEST['base_currency']) && $_REQUEST['base_currency'] == $cur_valuename){
 				$actualPrice = $requestPrice;
 				$isQuickCreate = true;
 			}
+			$_REQUEST[$cur_checkname] = isset($_REQUEST[$cur_checkname]) ? $_REQUEST[$cur_checkname] :'';
 			if($_REQUEST[$cur_checkname] == 'on' || $_REQUEST[$cur_checkname] == 1 || $isQuickCreate)
 			{
 				$conversion_rate = $currency_details[$i]['conversionrate'];
@@ -216,7 +219,7 @@ class Products extends CRMEntity {
 
 				$log->debug("Going to save the Product - $curname currency relationship");
 
-				if ($_REQUEST['action'] === 'CurrencyUpdate') {
+				if (isset($_REQUEST['action']) && $_REQUEST['action'] === 'CurrencyUpdate') {
 					$adb->pquery('DELETE FROM vtiger_productcurrencyrel WHERE productid=? AND currencyid=?', array($this->id, $curid));
 				}
 
@@ -816,7 +819,7 @@ class Products extends CRMEntity {
 			LEFT JOIN vtiger_salesordercf
 				ON vtiger_salesordercf.salesorderid = vtiger_salesorder.salesorderid
 			LEFT JOIN vtiger_invoice_recurring_info
-				ON vtiger_invoice_recurring_info.start_period = vtiger_salesorder.salesorderid
+				ON vtiger_invoice_recurring_info.salesorderid = vtiger_salesorder.salesorderid
 			LEFT JOIN vtiger_sobillads
 				ON vtiger_sobillads.sobilladdressid = vtiger_salesorder.salesorderid
 			LEFT JOIN vtiger_soshipads
@@ -1058,9 +1061,10 @@ class Products extends CRMEntity {
 
 		$button = '';
 
-		if(isPermitted("Products",1,"") == 'yes')
+		if((isPermitted("Products",1,"") == 'yes') && vtranslate('LBL_NEW_PRODUCT', 'Products') != '')
 		{
-			$button .= '<input title="'.$app_strings['LBL_NEW_PRODUCT'].'" accessyKey="F" class="button" onclick="this.form.action.value=\'EditView\';this.form.module.value=\'Products\';this.form.return_module.value=\'Products\';this.form.return_action.value=\'DetailView\'" type="submit" name="button" value="'.$app_strings['LBL_NEW_PRODUCT'].'">&nbsp;';
+			$newProductLabel = vtranslate('LBL_NEW_PRODUCT', 'Products');
+			$button .= '<input title="'.$newProductLabel.'" accessyKey="F" class="button" onclick="this.form.action.value=\'EditView\';this.form.module.value=\'Products\';this.form.return_module.value=\'Products\';this.form.return_action.value=\'DetailView\'" type="submit" name="button" value="'.$newProductLabel.'">&nbsp;';
 		}
 		if($singlepane_view == 'true')
 			$returnset = '&return_module=Products&return_action=DetailView&is_parent=1&return_id='.$id;

@@ -39,6 +39,7 @@
 
 					{assign var="RECORD_STRUCTURE_MODEL" value=$QUICK_CREATE_CONTENTS[$MODULE]['recordStructureModel']}
 					{assign var="RECORD_STRUCTURE" value=$QUICK_CREATE_CONTENTS[$MODULE]['recordStructure']}
+					{assign var="BLOCK_FIELDS" value=$QUICK_CREATE_CONTENTS[$MODULE]['recordStructure']} {* Dependency in Time UiType template *}
 					{assign var="MODULE_MODEL" value=$QUICK_CREATE_CONTENTS[$MODULE]['moduleModel']}
 
 					<div class="quickCreateContent calendarQuickCreateContent" style="padding-top:2%;margin-top:5px;">
@@ -87,12 +88,12 @@
 							<table class="massEditTable table no-border">
 								<tr>
 									{foreach key=FIELD_NAME item=FIELD_MODEL from=$RECORD_STRUCTURE name=blockfields}
-									{if $FIELD_NAME eq 'subject' || $FIELD_NAME eq 'date_start' || $FIELD_NAME eq 'due_date'}
+									{if $FIELD_NAME eq 'subject' || $FIELD_NAME eq 'date_start' || $FIELD_NAME eq 'due_date' || $FIELD_NAME eq 'time_start'}
 								</tr>{continue}
 								{/if}
 								{assign var="isReferenceField" value=$FIELD_MODEL->getFieldDataType()}
 								{assign var="referenceList" value=$FIELD_MODEL->getReferenceList()}
-								{assign var="referenceListCount" value=count($referenceList)}
+								{assign var="referenceListCount" value=php7_count($referenceList)}
 								{if $FIELD_MODEL->get('uitype') eq "19"}
 								{if $COUNTER eq '1'}
 								<td></td><td></td></tr><tr>

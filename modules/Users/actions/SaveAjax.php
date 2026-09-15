@@ -8,6 +8,8 @@
  * All Rights Reserved.
  *************************************************************************************/
 vimport('~~/include/Webservices/Custom/ChangePassword.php');
+vimport('~~/include/simplehtmldom/simple_html_dom.php');
+vimport('~~/libraries/InStyle/InStyle.php');
 
 class Users_SaveAjax_Action extends Vtiger_SaveAjax_Action {
 
@@ -41,12 +43,40 @@ class Users_SaveAjax_Action extends Vtiger_SaveAjax_Action {
 		}
 	}
 
+	protected function checkRestrictedValueChange(Vtiger_Request $request) {
+		// NOTE: to be repeated in Save.php
+		
+		if ($request->has('user_name') || $request->has('user_password') || $request->has('accesskey') ) {
+			// should use separate actions.
+			throw new AppException(vtranslate('LBL_PERMISSION_DENIED', 'Vtiger'));
+		}
+		if ($request->has('field') && in_array($request->get('field'), array('user_name', 'user_password', 'accesskey'))) {
+			// should use separate actions.
+			throw new AppException(vtranslate('LBL_PERMISSION_DENIED', 'Vtiger'));
+		}
+
+		if ($request->get('field', "") == "status" || $request->has("status")) {
+			$currentUserModel = Users_Record_Model::getCurrentUserModel();
+			// only admin (not self) can change status.
+			if (!$currentUserModel->isAdminUser()) {
+				throw new AppException(vtranslate('LBL_PERMISSION_DENIED', 'Vtiger'));
+			}
+			$recordId = $request->get('record');
+			if ($recordId == $currentUserModel->getId()) {
+				throw new AppException(vtranslate('LBL_PERMISSION_DENIED', 'Vtiger'));
+			}
+		}
+
+	}
+	
 	public function process(Vtiger_Request $request) {
 
 		$mode = $request->get('mode');
 		if (!empty($mode)) {
 			$this->invokeExposedMethod($mode, $request);
 			return;
+		} else {
+			$this->checkRestrictedValueChange($request);
 		}
 
 		$recordModel = $this->saveRecord($request);
@@ -133,7 +163,7 @@ class Users_SaveAjax_Action extends Vtiger_SaveAjax_Action {
 			if($fieldName == 'signature'){
 				$requestData = $request->getAll();
 				$instyle = new InStyle();
-				$signature = $instyle->convertStylesToInlineCss($requestData['signature']);
+				$signature = $instyle->convertStylesToInlineCss($requestData['value']);
 				//#4823970 - Added to remove any action tags like <form>, <input>, <button>..
 				$fieldValue = vtlib_purify($signature);
 				// Purify malicious html event attributes

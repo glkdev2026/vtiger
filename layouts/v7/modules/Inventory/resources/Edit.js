@@ -1628,6 +1628,7 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
 		params.get_url = 'getProductListPriceURL';
 		params.currency_id = jQuery('#currency_id option:selected').val();
         params.view = 'Popup';
+		params.search_params = '[[["active","e","1"]]]'; /* by default restrict to active books */
         var popupInstance = Vtiger_Popup_Js.getInstance();
         popupInstance.showPopup(params, 'post.LineItemPriceBookSelect.click');
 	},
@@ -1818,7 +1819,8 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
                 'animation' : true,
                 'title' : popOverTitle,
                 'trigger' : 'manual',
-                'template' : template,
+                'template' : template[0].outerHTML,
+				'sanitize' : false, /* to allow button / anchor */
                 'container' : self.lineItemsHolder
                 
             });
@@ -2007,7 +2009,8 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
                 'animation' : true,
                 'title' : popOverTitle,
                 'trigger' : 'manual',
-                'template' : template,
+                'template' : template[0].outerHTML,
+				'sanitize' : false, /* to allow button / anchor */
                 'container' : self.lineItemsHolder
                 
             });
@@ -2034,8 +2037,8 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
 			'animation' : true,
 			'title' : 'Discount',
 			'trigger' : 'manual',
-			'template' : popOverTemplate
-                
+			'template' : popOverTemplate[0].outerHTML,
+            'sanitize' : false, /* to allow button / anchor */
 		});
 		this.finalDiscountEle.on('shown.bs.popover', function(){
 			if(jQuery(this.finalDiscountEle).next('.popover').find('.popover-content').height() > 300) {
@@ -2111,8 +2114,8 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
                 'animation' : true,
                 'title' : chargesTrigger.text(),
                 'trigger' : 'manual',
-                'template' : popOverTemplate
-                
+                'template' : popOverTemplate[0].outerHTML,
+                'sanitize' : false, /* to allow button / anchor */
         });
 
 		chargesTrigger.on('shown.bs.popover', function(){
@@ -2141,7 +2144,7 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
                chargesTrigger.popover('show');
                popOverEle.css('opacity',1).css('z-index','');
            }else{
-			   chargesTrigger.popover('hide');
+			   // chargesTrigger.popover('hide'); /* disabled to avoid removal of input DOM elements. */
                popOverEle.css('opacity',0).css('z-index','-1');
            }
         });
@@ -2175,8 +2178,8 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
                 'animation' : true,
                 'title' : finalTaxUI.find('.popover_title').val(),
                 'trigger' : 'manual',
-                'template' : popOverTemplate
-                
+                'template' : popOverTemplate[0].outerHTML,
+                'sanitize' : false, /* to allow button / anchor */
         });
 
 		finalTaxTriggerer.on('shown.bs.popover', function(){
@@ -2206,7 +2209,7 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
 				finalTaxTriggerer.popover('show');
 				popOverEle.css('opacity',1).css('z-index','');
 			} else {
-				finalTaxTriggerer.popover('hide');
+				// finalTaxTriggerer.popover('hide'); /* disabled to avoid removal of input DOM elements. */
 				popOverEle.css('opacity',0).css('z-index','-1');
 			}
         });
@@ -2238,8 +2241,8 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
                 'animation' : true,
                 'title' : 'Discount',
                 'trigger' : 'manual',
-                'template' : popOverTemplate
-                
+                'template' : popOverTemplate[0].outerHTML,
+                'sanitize' : false, /* to allow button / anchor */
         });
 
 		chargeTaxTriggerer.on('shown.bs.popover', function(){
@@ -2269,7 +2272,7 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
 				popOverEle.find('.popover-title').text(popOverEle.find('.popover_title').text());
 				popOverEle.css('opacity',1).css('z-index','');
 			} else {
-				chargeTaxTriggerer.popover('hide');
+				// chargeTaxTriggerer.popover('hide'); /* disabled to avoid removal of input DOM elements. */
 				popOverEle.css('opacity',0).css('z-index','-1');
 			}
         });
@@ -2300,8 +2303,8 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
                 'animation' : true,
                 'title' : deductTaxesTriggerer.text(),
                 'trigger' : 'manual',
-                'template' : popOverTemplate
-                
+                'template' : popOverTemplate[0].outerHTML,
+				'sanitize' : false, /* to allow buttons or anchor tag */                
         });
 
 		deductTaxesTriggerer.on('shown.bs.popover', function(){
@@ -2330,7 +2333,7 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
 				deductTaxesTriggerer.popover('show');
 				popOverEle.css('opacity',1).css('z-index','');
 			} else {
-				deductTaxesTriggerer.popover('hide');
+				// deductTaxesTriggerer.popover('hide'); /* disabled to avoid removal of input DOM elements. */
 				popOverEle.css('opacity',0).css('z-index','-1');
 			}
         });
@@ -2793,9 +2796,12 @@ Vtiger_Edit_Js("Inventory_Edit_Js", {
             e.preventDefault();
             var element = jQuery(e.currentTarget);
             var popOverEle = element.closest('.popover');
-			var validate = popOverEle.find('input').valid();
-			if (!validate) {
-				popOverEle.find('.input-error').val(0).valid();
+			var popOverInput = popOverEle.find('input');
+			if (popOverInput.length) {
+				var validate = popOverInput.valid();
+				if (!validate) {
+					popOverEle.find('.input-error').val(0).valid();
+				}
 			}
 			popOverEle.css('opacity',0).css('z-index','-1');
 

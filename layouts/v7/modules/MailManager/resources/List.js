@@ -120,7 +120,12 @@ Vtiger_List_Js("MailManager_List_Js", {}, {
 			var element = jQuery(e.currentTarget);
 			var serverType = element.val();
 			var useServer = '', useProtocol = '', useSSLType = '', useCert = '';
-			if(serverType == 'gmail' || serverType == 'yahoo') {
+			if (serverType == 'google-oauth2') {
+				settingContainer.find('.settings_details').addClass('hide');
+				settingContainer.find('.additional_settings').addClass('hide');
+				settingContainer.find('.modal-footer').addClass('hide');
+				window.location.href = "oauth2callback/index.php?authfor=MailManager&authservice=Google";
+			} else if(serverType == 'gmail' || serverType == 'yahoo') {
 				useServer = 'imap.gmail.com';
 				if(serverType == 'yahoo') {
 					useServer = 'imap.mail.yahoo.com';
@@ -132,8 +137,8 @@ Vtiger_List_Js("MailManager_List_Js", {}, {
 				settingContainer.find('.additional_settings').addClass('hide');
 			} else if(serverType == 'fastmail') {
 				useServer = 'mail.messagingengine.com';
-				useProtocol = 'IMAP2';
-				useSSLType = 'tls';
+				useProtocol = 'IMAP4';
+				useSSLType = 'ssl';
 				useCert = 'novalidate-cert';
 				settingContainer.find('.settings_details').removeClass('hide');
 				settingContainer.find('.additional_settings').addClass('hide');
@@ -354,7 +359,7 @@ Vtiger_List_Js("MailManager_List_Js", {}, {
 						'_msgno' : msgNos.join(',')
 					};
 					app.request.post({data : params}).then(function(err,data) {
-						app.helper.hideProgress();
+						self.openFolder(folder);
 						if(data.status) {
 							app.helper.showSuccessNotification({'message': app.vtranslate('JSLBL_MAILS_DELETED')});
 							self.updateUnreadCount("-"+self.getUnreadCountByMsgNos(msgNos), folder);
@@ -418,7 +423,7 @@ Vtiger_List_Js("MailManager_List_Js", {}, {
 					'_msgno' : msgNos.join(',')
 				};
 				app.request.post({data : params}).then(function(err,data) {
-					app.helper.hideProgress();
+					self.openFolder(folder);
 					if(data.status) {
 						app.helper.showSuccessNotification({'message': app.vtranslate('JSLBL_MAIL_MOVED')});
 						var unreadCount = self.getUnreadCountByMsgNos(msgNos);
@@ -708,7 +713,14 @@ Vtiger_List_Js("MailManager_List_Js", {}, {
 				self.registerReplyAllEvent();
 				self.showRelatedActions();
 				self.registerMailPaginationEvent();
-				container.find('.emailDetails').popover({html: true});
+				let popoverEl = container.find('.emailDetails').popover({html: true});
+				/* enable allowed-tags in popover */
+				for (var tag of ["table", "tbody", "thead", "tr", "th", "td"]) {
+					if (!popoverEl.popover.Constructor.DEFAULTS.whiteList[tag]) {
+						popoverEl.popover.Constructor.DEFAULTS.whiteList[tag] = [];
+					}
+				}
+				
 				self.updateUnreadCount("-"+unreadCount, jQuery(parentEle).data('folder'));
 				self.loadContentsInIframe(container.find('#mmBody'));
 			});

@@ -9,18 +9,17 @@
 
 <input type='hidden' name='charttype' value="{$CHART_TYPE}" />
 <input type='hidden' name='data' value='{Vtiger_Functions::jsonEncode($DATA)}' />
-<input type='hidden' name='clickthrough' value="{$CLICK_THROUGH}" />
+<input type='hidden' name='clickthrough' value="{if isset($CLICK_THROUGH)}{$CLICK_THROUGH}{/if}" />
 
 <br>
 <div class="dashboardWidgetContent">
     <input type="hidden" class="yAxisFieldType" value="{$YAXIS_FIELD_TYPE}" />
     <div class='border1px filterConditionContainer' style="padding:30px;">
-        <div id='chartcontent' name='chartcontent' style="min-height:400px;" data-mode='Reports'></div>
+    <div id='chartcontent' name='chartcontent' style="min-height:500px overflowY:'auto';" data-mode='Reports'></div>
         <br>
-        {if $CLICK_THROUGH neq 'true'}
+        {if !isset($CLICK_THROUGH) || $CLICK_THROUGH neq 'true'}
             <div class='row-fluid alert-info'>
-                <span class='col-lg-4 offset4'> &nbsp;</span>
-                <span class='span alert-info'>
+                <span class='span alert-info' style="padding:10px;text-align:center">
                     <i class="icon-info-sign"></i>
                     {vtranslate('LBL_CLICK_THROUGH_NOT_AVAILABLE', $MODULE)}
                 </span>

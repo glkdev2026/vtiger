@@ -70,19 +70,19 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 	function getProducts() {
 		$numOfCurrencyDecimalPlaces = getCurrencyDecimalPlaces();
 		$relatedProducts = getAssociatedProducts($this->getModuleName(), $this->getEntity());
-		$productsCount = count($relatedProducts);
+		$productsCount = php7_count($relatedProducts);
 
 		//Updating Tax details
 		$taxtype = $relatedProducts[1]['final_details']['taxtype'];
 		$productIdsList = array();
 		for ($i=1;$i<=$productsCount; $i++) {
 			$product = $relatedProducts[$i];
-			$productId = $product['hdnProductId'.$i];
-			$totalAfterDiscount = $product['totalAfterDiscount'.$i];
+			$productId = isset($product['hdnProductId'.$i]) ? $product['hdnProductId'.$i] : "";
+			$totalAfterDiscount = isset($product['totalAfterDiscount'.$i]) ? $product['totalAfterDiscount'.$i]:"";
 
 			if ($taxtype == 'individual') {
 				$taxDetails = getTaxDetailsForProduct($productId, 'all');
-				$taxCount = count($taxDetails);
+				$taxCount = php7_count($taxDetails);
 				$taxTotal = '0';
 
 				for($j=0; $j<$taxCount; $j++) {
@@ -120,18 +120,22 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 				}
 				$netPrice = $totalAfterDiscount + $taxTotal;
 				$relatedProducts[$i]['netPrice'.$i] = number_format($netPrice, $numOfCurrencyDecimalPlaces, '.', '');
+                
+                $preTaxTotal+=$totalAfterDiscount;
 			}
 
-			if ($relatedProducts[$i]['entityType'.$i] == 'Products') {
+			if (isset($relatedProducts[$i]['entityType'.$i]) && $relatedProducts[$i]['entityType'.$i] == 'Products') {
 				$productIdsList[] = $productId;
 			}
 		}
 
-		//Updating Pre tax total
-		$preTaxTotal = (float)$relatedProducts[1]['final_details']['hdnSubTotal']
-						+ (float)$relatedProducts[1]['final_details']['shipping_handling_charge']
-						- (float)$relatedProducts[1]['final_details']['discountTotal_final'];
-
+        //Updating Pre tax total if not calculated from individual taxtype
+        if (!isset($preTaxTotal)) {
+    		$preTaxTotal = (float)$relatedProducts[1]['final_details']['hdnSubTotal']
+    						+ (float)$relatedProducts[1]['final_details']['shipping_handling_charge']
+    						- (float)$relatedProducts[1]['final_details']['discountTotal_final'];
+        }
+        
 		$relatedProducts[1]['final_details']['preTaxTotal'] = number_format($preTaxTotal, $numOfCurrencyDecimalPlaces,'.','');
 		
 		//Updating Total After Discount
@@ -204,7 +208,7 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 			for ($i=1; $i<=$productsCount; $i++) {
 				$product = $relatedProducts[$i];
 				$productId = $product['hdnProductId'.$i];
-				$imageDetails = $imageDetailsList[$productId];
+				$imageDetails = isset($imageDetailsList[$productId]) ? $imageDetailsList[$productId] : "";
 				if ($imageDetails) {
 					$relatedProducts[$i]['productImage'.$i] = $imageDetails[0]['path'].'_'.$imageDetails[0]['orgname'];
 				}
@@ -345,8 +349,8 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 
 		$productIdsList = array();
 		foreach ($productDetails as $key => $lineItemDetail) {
-			$productId	= $lineItemDetail['hdnProductId'.$key];
-			$entityType = $lineItemDetail['entityType'.$key];
+			$productId	= isset($lineItemDetail['hdnProductId'.$key]) ? $lineItemDetail['hdnProductId'.$key] : "";
+			$entityType = isset($lineItemDetail['entityType'.$key]) ? $lineItemDetail['entityType'.$key] : "";
 			$productIdsList[$entityType][] = $productId;
 		}
 
@@ -358,19 +362,18 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 
 		//Getting image details of each product
 		$imageDetailsList = array();
-		if ($productIdsList['Products']) {
+		if (isset($productIdsList['Products']) && $productIdsList['Products']) {
 			$imageDetailsList = Products_Record_Model::getProductsImageDetails($productIdsList['Products']);
 		}
 
 		foreach ($productDetails as $key => $lineItemDetail) {
-			$productId = $lineItemDetail['hdnProductId'.$key];
-			$entityType = $lineItemDetail['entityType'.$key];
-
+			$productId = isset($lineItemDetail['hdnProductId'.$key]) ? $lineItemDetail['hdnProductId'.$key] : "";
+			$entityType = isset($lineItemDetail['entityType'.$key]) ? $lineItemDetail['entityType'.$key] : "";
+			
 			//updating list price details
-			$productDetails[$key]['listPrice'.$key] = number_format((float)$convertedPriceDetails[$entityType][$productId], $numOfCurrencyDecimals, '.', '');
-
+			$productDetails[$key]['listPrice'.$key] = isset($convertedPriceDetails[$entityType][$productId]) ? number_format((float)$convertedPriceDetails[$entityType][$productId], $numOfCurrencyDecimals, '.', ''):"";			
 			//updating cost price details
-			$purchaseCost = (float)$userCurrencyInfo['conversion_rate'] * (float)$lineItemDetail['purchaseCost'.$key];
+			$purchaseCost = isset($lineItemDetail['purchaseCost'.$key]) ? (float)$userCurrencyInfo['conversion_rate'] * (float)$lineItemDetail['purchaseCost'.$key] :0;
 			$productDetails[$key]['purchaseCost'.$key] = number_format($purchaseCost, $numOfCurrencyDecimals, '.', '');
 
 			if($moduleName === 'PurchaseOrder') {
@@ -378,7 +381,7 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 			}
 
 			//Image detail
-			if ($imageDetailsList[$productId]) {
+			if (isset($imageDetailsList[$productId]) && $imageDetailsList[$productId]) {
 				$imageDetails = $imageDetailsList[$productId];
 				$productDetails[$key]['productImage'.$key] = $imageDetails[0]['path'].'_'.$imageDetails[0]['orgname'];
 			}
@@ -391,7 +394,7 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 	 * @return <Array>
 	 */
 	public function getCharges() {
-		if (!$this->chargesAndItsTaxes) {
+		if (!isset($this->chargesAndItsTaxes) || !$this->chargesAndItsTaxes) {
 			$this->chargesAndItsTaxes = array();
 			$recordId = $this->getId();
 			if ($recordId) {
@@ -441,7 +444,7 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 	public function getProductsForPurchaseOrder() {
 		$relatedProducts = $this->getProducts();
 
-		$productsCount = count($relatedProducts);
+		$productsCount = php7_count($relatedProducts);
 		for ($i = 1; $i <= $productsCount; $i++) {
 			$relatedProducts[$i]['discountTotal'.$i] = 0;
 			$relatedProducts[$i]['discount_percent'.$i] = 0;
@@ -526,7 +529,7 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 		$selectedCharges = $this->getCharges();
 		$conversionRateInfo = getCurrencySymbolandCRate($this->get('currency_id'));
 		foreach ($selectedCharges as $chargeId => $chargeInfo) {
-			$selectedCharges[$chargeId]['value'] = (float)$chargeInfo['value'] / (float)$conversionRateInfo['rate'];
+			$selectedCharges[$chargeId]['value'] = empty($conversionRateInfo['rate']) ? 0 : (float)$chargeInfo['value'] / (float)$conversionRateInfo['rate'];
 		}
 
 		foreach (Inventory_TaxRegion_Model::getAllTaxRegions() as $regionId => $regionModel) {
@@ -678,7 +681,7 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 		if ($chargeId) {
 			$chargeTaxModelsList = array();
 			$chargesAndItsTaxes = $this->getCharges();
-			$chargeInfo = $chargesAndItsTaxes[$chargeId];
+			$chargeInfo = isset($chargesAndItsTaxes[$chargeId]) ? $chargesAndItsTaxes[$chargeId] : "";
 			if ($chargeInfo && $chargeInfo['taxes']) {
 				$taxes = array_keys($chargeInfo['taxes']);
 				foreach ($taxes as $taxId) {
@@ -729,7 +732,7 @@ class Inventory_Record_Model extends Vtiger_Record_Model {
 
 			$subQtysList = array();
 			$subProducts = $requestData["subproduct_ids$i"];
-			$subProducts = split(',', rtrim($subProducts, ','));
+			$subProducts = explode(',', rtrim($subProducts, ','));
 
 			foreach ($subProducts as $subProductInfo) {
 				 list($subProductId, $subProductQty) = explode(':', $subProductInfo);

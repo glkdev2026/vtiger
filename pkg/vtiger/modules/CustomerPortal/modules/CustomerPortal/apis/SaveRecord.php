@@ -89,7 +89,7 @@ class CustomerPortal_SaveRecord extends CustomerPortal_FetchRecord {
 				}
 
 				try {
-					if (vtws_recordExists($recordId)) {
+					if (!$recordId || vtws_recordExists($recordId)) {
 						// Retrieve or Initalize
 						if (!empty($recordId) && !$this->isNewRecordRequest($request)) {
 							$this->recordValues = vtws_retrieve($recordId, $current_user);
@@ -115,7 +115,7 @@ class CustomerPortal_SaveRecord extends CustomerPortal_FetchRecord {
 								$this->recordValues['parent_id'] = $accountId;
 						}
 
-						if ($module == 'Documents' && count($_FILES)) {
+						if ($module == 'Documents' && php7_count($_FILES)) {
 							$file = $_FILES['file'];
 							$this->recordValues['notes_title'] = $request->get('filename');
 							$this->recordValues['filelocationtype'] = 'I'; // location type is internal
@@ -195,7 +195,7 @@ class CustomerPortal_SaveRecord extends CustomerPortal_FetchRecord {
 							}
 						}
 
-						if (count($_FILES)) {
+						if (php7_count($_FILES)) {
 							$_FILES = Vtiger_Util_Helper::transformUploadedFiles($_FILES, true);
 							$attachmentType = $request->get('attachmentType');
 							$focus = CRMEntity::getInstance($module);

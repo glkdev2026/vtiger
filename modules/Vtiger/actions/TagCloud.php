@@ -95,14 +95,8 @@ class Vtiger_TagCloud_Action extends Vtiger_Mass_Action {
 		if(empty($newTags)) {
 			$newTags = array();
 		}
-		$existingTags = $tagsList['existing'];
-		if(empty($existingTags)) {
-			$existingTags = array();
-		}
-		$deletedTags = $tagsList['deleted'];
-		if(empty($deletedTags)) {
-			$deletedTags = array();
-		}
+		$existingTags = isset($tagsList['existing']) && $tagsList['existing'] ? $tagsList['existing'] : array();
+		$deletedTags = isset($tagsList['deleted']) && $tagsList['deleted'] ? $tagsList['deleted'] : array();
 		$newTagType = $request->get('newTagType');
 		$currentUser = Users_Record_Model::getCurrentUserModel();
 		$userId = $currentUser->getId();
@@ -133,7 +127,7 @@ class Vtiger_TagCloud_Action extends Vtiger_Mass_Action {
 		foreach ($allAccessibleTags as $tagModel) {
 			$result['tags'][] = array('name'=> decode_html($tagModel->getName()), 'type'=>$tagModel->getType(),'id' => $tagModel->getId());
 		}
-		$allAccessibleTagCount = count($allAccessibleTags);
+		$allAccessibleTagCount = php7_count($allAccessibleTags);
 		$result['moreTagCount'] = $allAccessibleTagCount - Vtiger_Tag_Model::NUM_OF_TAGS_DETAIL;
 		$result['deleted'] = $deletedTags;
 

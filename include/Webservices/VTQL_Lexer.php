@@ -12,7 +12,7 @@ incState($lexer);
 }
 function incState($lexer){
 $lexer->current_state++;
-if($lexer->current_state === sizeof($lexer->mandatory_states)){
+if($lexer->current_state === php7_sizeof($lexer->mandatory_states)){
 $lexer->mandatory = false;
 }
 }
@@ -208,7 +208,7 @@ return $this->token."";
             if (preg_match($yy_global_pattern, substr($this->data, $this->index), $yymatches)) {
                 $yysubmatches = $yymatches;
                 $yymatches = array_filter($yymatches, 'strlen'); // remove empty sub-patterns
-                if (!count($yymatches)) {
+                if (!php7_count($yymatches)) {
                     throw new Exception('Error: lexing failed because a rule matched' .
                         'an empty string.  Input "' . substr($this->data,
                         $this->index, 5) . '... state INITR');

@@ -7,6 +7,7 @@
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
  ************************************************************************************/
+#[\AllowDynamicProperties]
 class VTSimpleTemplate{
 
 	function __construct($templateString){
@@ -26,7 +27,7 @@ class VTSimpleTemplate{
 		}
 		// If parent is empty then we can't do any thing here
 		if(!empty($this->parent)){
-			if(count($matches)==0){
+			if(php7_count($matches)==0){
 				$fieldname = $match[1];
 
 				//To handle comments for this module
@@ -132,7 +133,7 @@ class VTSimpleTemplate{
 	}
 
 	function parseTemplate(){
-		return preg_replace_callback('/\\$(\w+|\((\w+) : \(([_\w]+)\) (\w+)\))/', array($this,"matchHandler"), $this->template);
+		return preg_replace_callback('/\\$(\w+|\((\w+) : \(([_\w]+)\) (\w+)\))/', array($this,"matchHandler"), $this->template ? $this->template : "");
 	}
 
 	function getCompanySetting($fieldname) {
@@ -383,7 +384,7 @@ class VTSimpleTemplate{
 				$dateTime = new DateTimeField($adb->query_result($result, $i, 'createdtime'));
 				$dateTimeValue = $dateTime->getDisplayDateTimeValue();
 				$dateTimeParts = explode(' ', $dateTimeValue);
-				$createdTime = $dateTimeParts[0].' '.Vtiger_Time_UIType::getDisplayValue($dateTimeParts[1]);
+				$createdTime = $dateTimeParts[0].' '.Vtiger_Time_UIType::getDisplayValueUserFormat($dateTimeParts[1]);
 				$timeZone = vtranslate($current_user->time_zone, 'Users');
 				$userId = $adb->query_result($result, $i, 'userid');
 				$commenter = getOwnerName($userId);

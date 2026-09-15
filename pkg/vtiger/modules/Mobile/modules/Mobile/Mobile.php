@@ -10,6 +10,7 @@
 
 include_once dirname(__FILE__) . '/Mobile.Config.php';
 
+#[\AllowDynamicProperties]
 class Mobile {
 	
 	/**
@@ -218,7 +219,7 @@ class Mobile_WS_Operation {
 		Vtiger_Utils::Log("Enabling webservice operation {$this->opName}", true);
 		
 		$operationid = vtws_addWebserviceOperation($this->opName, $this->opFile, $this->opClass, $this->opType);
-		for($index = 0; $index < count($this->parameters); ++$index) {
+		for($index = 0; $index < php7_count($this->parameters); ++$index) {
 			vtws_addWebserviceOperationParam($operationid, $this->parameters[$index]['name'], $this->parameters[$index]['type'], ($index+1));
 		}
 	}

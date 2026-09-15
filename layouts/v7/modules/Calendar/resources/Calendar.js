@@ -559,7 +559,11 @@ Vtiger.Class("Calendar_Calendar_Js", {
 					feedIndicatorTemplate.removeClass('.feed-indicator-template');
 					var newFeedIndicator = feedIndicatorTemplate.clone(true, true);
 					//replacing module name prefix with translated module name and concatinating with field name
-					feedIndicatorTitle = translatedModuleName + feedIndicatorTitle.substr(feedIndicatorTitle.indexOf('-'));
+					var feedIndicatorModuleEndIndex = feedIndicatorTitle.indexOf('('); // Events (ActivityType) - title...
+					if (feedIndicatorModuleEndIndex == -1) { // ModuleName - title...
+							feedIndicatorModuleEndIndex = feedIndicatorTitle.indexOf('-');
+					}
+					feedIndicatorTitle = translatedModuleName + feedIndicatorTitle.substr(feedIndicatorModuleEndIndex);
 					newFeedIndicator.find('span:first').text(feedIndicatorTitle);
 					var newFeedCheckbox = newFeedIndicator.find('.toggleCalendarFeed');
 					newFeedCheckbox.attr('data-calendar-sourcekey', calendarSourceKey).
@@ -788,12 +792,12 @@ Vtiger.Class("Calendar_Calendar_Js", {
 			}
 
 			thisInstance.checkDuplicateFeed(moduleName, fieldName, selectedColor, conditions).then(
-					function (result) {
-						app.helper.showErrorNotification({'message': result['message']});
-						currentTarget.removeAttr('disabled');
+					function(result) {
+					    app.helper.showErrorNotification({'message':result['message']});
+					    currentTarget.removeAttr('disabled');
 					},
-					function () {
-						thisInstance.saveFeedSettings(modalContainer);
+					function() {
+					    thisInstance.saveFeedSettings(modalContainer);
 					});
 		});
 	},
@@ -1638,6 +1642,7 @@ Vtiger.Class("Calendar_Calendar_Js", {
 			defaultView: userDefaultActivityView,
 			slotLabelFormat: userDefaultTimeFormat,
 			timeFormat: userDefaultTimeFormat,
+			minTime: thisInstance.getUserPrefered('start_hour')+':00',//angelo
 			events: [],
 			monthNames: [
 				app.vtranslate('LBL_JANUARY'),

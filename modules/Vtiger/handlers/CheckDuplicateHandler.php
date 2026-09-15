@@ -63,7 +63,7 @@ class CheckDuplicateHandler extends VTEventHandler {
 				}
 			}
 
-			if (count($uniqueFields) > 0) {
+			if (php7_count($uniqueFields) > 0) {
 				$checkDuplicates = false;
 				$uniqueFieldsData = array();
 				foreach ($uniqueFields as $fieldName => $fieldModel) {
@@ -139,6 +139,7 @@ class CheckDuplicateHandler extends VTEventHandler {
 
 						$fieldValue = $uniqueFieldsData[$fieldName];
 						if (isset($fieldValue)) {
+                                                        if(is_array($fieldValue)) $fieldValue = empty($fieldValue) ? "" : $fieldValue;
 							array_push($conditions, "$fieldTableName.$fieldColumnName = ?");
 						} else {
 							$fieldValue = '';
@@ -148,12 +149,12 @@ class CheckDuplicateHandler extends VTEventHandler {
 
 						if ($fieldModel->get('uitype') == 72) {
 							array_push($conditions, "$fieldTableName.currency_id = ?");
-							$currencyIdDetails = split('curname', $_REQUEST['base_currency']);
+							$currencyIdDetails = explode('curname', $_REQUEST['base_currency']);
 							$params[] = $currencyIdDetails[1];
 						}
 					}
 
-					if (count($conditions) > 0) {
+					if (php7_count($conditions) > 0) {
 						$conditionsSql = implode(" AND ", $conditions);
 						$query .= " AND ($conditionsSql)";
 					}
@@ -186,7 +187,7 @@ class CheckDuplicateHandler extends VTEventHandler {
 						$duplicateRecordsList[$row['crmid']] = $row['label'];
 					}
 
-					if (count($duplicateRecordsList) > 0) {
+					if (php7_count($duplicateRecordsList) > 0) {
 						$exception = new DuplicateException(vtranslate('LBL_DUPLICATES_DETECTED'));
 						$exception->setModule($moduleName)
 								  ->setDuplicateRecordLabels($duplicateRecordsList)

@@ -27,6 +27,8 @@ class VTEmailTask extends VTTask{
 		global $current_user;
 		$util = new VTWorkflowUtils();
 		$admin = $util->adminUser();
+		$entityCache = null;
+		$path = '';
 		$module = $entity->getModuleName();
 		$taskContents = Zend_Json::decode($this->getContents($entity));
 		$relatedInfo = Zend_Json::decode($this->getRelatedInfo());
@@ -157,7 +159,7 @@ class VTEmailTask extends VTTask{
 				//There can be multiple attachments for a single comment
 				foreach($fileDetails as $fileDetail){
 					if(!empty($fileDetail)){
-						$path = $fileDetail['path'].$fileDetail['attachmentsid'].'_'.decode_html($fileDetail['name']);
+						$path = $fileDetail['path'].$fileDetail['attachmentsid'].'_'.decode_html(!empty($fileDetail['storedname']) ? $fileDetail['storedname'] : $fileDetail['name']);
 						$mailerInstance->AddAttachment($path);
 					}
 				}

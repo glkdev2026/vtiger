@@ -123,7 +123,7 @@ class Import_FileReader_Reader {
 	public function addRecordToDB($columnNames, $fieldValues) { 
 		$db = PearDatabase::getInstance(); 
 		foreach($fieldValues as $key => $fieldVal){ 
-			$newField[$key] = htmlspecialchars_decode($fieldVal, ENT_QUOTES); 
+			$newField[$key] = vtlib_purify(htmlspecialchars_decode($fieldVal, ENT_QUOTES)); 
 		} 
 		$fieldValues = $newField; 
 		$tableName = Import_Utils_Helper::getDbTableName($this->user); 

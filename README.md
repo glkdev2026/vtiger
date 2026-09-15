@@ -1,10 +1,8 @@
-Vtiger CRM
-==========
+# Vtiger CRM
 
 Vtiger is a PHP based web application that enables businesses to increase sales wins, marketing ROI, and support satisfaction by providing tools for employees and management work more effectively, capture more data, and derive new actionable insights from across the customer lifecycle.
 
-Get involved
-------------
+## Get involved
 
 Development on vtiger is done at https://code.vtiger.com
 
@@ -13,7 +11,7 @@ If contribution has any patented code, or commercial code, then please communica
 
 https://www.vtiger.com/vtiger-public-license/
 
-To register for an account, please contact info @ vtiger.com, you will need this to file issues and/or fix the code
+To register for an account, please contact community @ vtiger.com, you will need this to file issues and/or fix the code
 Once you have an account, you can [browse the code](https://code.vtiger.com/vtiger/vtigercrm/tree/master),
 [see if your issue is already reported](https://code.vtiger.com/vtiger/vtigercrm/issues) and if you have a new problem
 to report you can [create an issue](https://code.vtiger.com/vtiger/vtigercrm/issues/new?issue)
@@ -39,6 +37,8 @@ you will switch to that branch using the checkout command
 
     git branch fix_projects_on_calendar
     git checkout fix_projects_on_calendar
+
+Before you install, you need to run ```composer update```
 
 Now you can make your changes and commit all changed files with
 

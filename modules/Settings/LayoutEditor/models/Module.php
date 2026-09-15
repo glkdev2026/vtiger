@@ -21,11 +21,12 @@ class Settings_LayoutEditor_Module_Model extends Vtiger_Module_Model {
 	 * Function that returns all the fields for the module
 	 * @return <Array of Vtiger_Field_Model> - list of field models
 	 */
-	public function getFields() {
+	public function getFields($blockInstance = false) {
 		if(empty($this->fields)){
 			$fieldList = array();
 			$blocks = $this->getBlocks();
 			$blockId = array();
+			$moduleModel=null;
 			foreach ($blocks as $block) {
 				//to skip events hardcoded block id
 				if($block->get('id') == 'EVENT_INVITE_USER_BLOCK_ID') {
@@ -33,7 +34,7 @@ class Settings_LayoutEditor_Module_Model extends Vtiger_Module_Model {
 				}
 				$blockId[] = $block->get('id');
 			}
-			if(count($blockId) > 0) {
+			if(php7_count($blockId) > 0) {
 				$fieldList = Settings_LayoutEditor_Field_Model::getInstanceFromBlockIdList($blockId,$moduleModel);
 			}
 			//To handle special case for invite users
@@ -183,7 +184,8 @@ class Settings_LayoutEditor_Module_Model extends Vtiger_Module_Model {
 		} else if (strtolower($fieldType) == 'time') {
 			$defaultValue = Vtiger_Time_UIType::getTimeValueWithSeconds($defaultValue);
 		} else if (strtolower($fieldType) == 'currency') {
-			$defaultValue = CurrencyField::convertToDBFormat($defaultValue, null, true);
+			//The argument for $skipformatting parameter is passed false to get the value in DB format($).
+			$defaultValue = CurrencyField::convertToDBFormat($defaultValue, null, false);
 		} else if (strtolower($fieldType) == 'decimal') {
 			$defaultValue = CurrencyField::convertToDBFormat($defaultValue, null, true);
 		}
@@ -191,7 +193,7 @@ class Settings_LayoutEditor_Module_Model extends Vtiger_Module_Model {
 		if (is_array($defaultValue)) {
 			$defaultValue = implode(' |##| ', $defaultValue);
 		}
-		$fieldModel->set('defaultvalue', $defaultValue);
+		$fieldModel->set('defaultvalue', vtlib_purify($defaultValue));
 
 		$blockModel = Vtiger_Block_Model::getInstance($blockId, $this);
 		$blockModel->addField($fieldModel);
@@ -467,7 +469,7 @@ class Settings_LayoutEditor_Module_Model extends Vtiger_Module_Model {
 		}
 
 		//Fields Info
-		if (count($fieldIdsList) < 4) {//Maximum 3 fields are allowed
+		if (php7_count($fieldIdsList) < 4) {//Maximum 3 fields are allowed
 			$query = 'UPDATE vtiger_field SET isunique = CASE WHEN fieldid IN ('.  generateQuestionMarks($fieldIdsList).') THEN 1 ELSE 0 END WHERE tabid=?';
 			$params = array_merge($fieldIdsList, array($tabId));
 			$db->pquery($query, $params);

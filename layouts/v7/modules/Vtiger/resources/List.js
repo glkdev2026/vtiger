@@ -1363,6 +1363,7 @@ Vtiger.Class("Vtiger_List_Js", {
     	
     	var autoIncludeFieldsInMassEditCallback = function() {
 			var fieldName = $(this).attr('name');
+			if (!fieldName) return;
 			fieldName = fieldName.replace(/\[\]$/, ''); //remove trailing [] for cases like multiselect
 			
 			$(this).closest('tr').find("input[id=include_in_mass_edit_" + fieldName + "]").prop( "checked", true );
@@ -1943,7 +1944,7 @@ Vtiger.Class("Vtiger_List_Js", {
 			return;
 		}
 		currentEle.find('.showTotalCountIcon').addClass('hide');
-		if (totalNumberOfRecords === '') {
+		if (totalNumberOfRecords == 0) {
 			thisInstance.totalNumOfRecords_performingAsyncAction = true;
 			thisInstance.getPageCount().then(function (data) {
 				currentEle.addClass('hide');
@@ -1964,6 +1965,7 @@ Vtiger.Class("Vtiger_List_Js", {
 		var totalNumberOfRecords = jQuery('#totalCount', listViewContainer).val();
 		var pageNumberElement = jQuery('.pageNumbersText', listViewContainer);
 		var pageRange = pageNumberElement.text();
+		totalNumberOfRecords = app.helper.purifyContent(totalNumberOfRecords);
 		var newPagingInfo = pageRange.trim() + " " + app.vtranslate('of') + " " + totalNumberOfRecords + "  ";
 		var listViewEntriesCount = parseInt(jQuery('#noOfEntries', listViewContainer).val());
 
@@ -1987,7 +1989,8 @@ Vtiger.Class("Vtiger_List_Js", {
 	},
 	registerMoreRecentUpdatesClickEvent: function (container, recordId) {
 		container.find('.moreRecentUpdates').on('click', function () {
-			var recentUpdateURL = "index.php?view=Detail&mode=showRecentActivities&page=1&module=" + app.getModuleName() + "&record=" + recordId + "&tab_label=LBL_UPDATES";
+			recordId = app.helper.purifyContent(recordId);
+			var recentUpdateURL = "index.php?view=Detail&mode=showRecentActivities&page=1&module=" + encodeURIComponent(app.getModuleName()) + "&record=" + encodeURIComponent(recordId) + "&tab_label=LBL_UPDATES";
 			window.location.href = recentUpdateURL;
 		});
 	},
@@ -2435,8 +2438,9 @@ Vtiger.Class("Vtiger_List_Js", {
 				//add available field to selected list
 				availFieldsList.on('click', '.item', function (e) {
 					var selectedFieldsEles = selectedFieldsList.find('.item');
-					if (selectedFieldsEles.length > 15) {
-						app.helper.showErrorNotification({message: app.vtranslate('JS_ADD_MAX_15_ITEMS')});
+					var limit = jQuery('#maxListFieldsSelectionSize').text();
+					if (selectedFieldsEles.length > limit) {
+						app.helper.showErrorNotification({message: app.vtranslate('JS_YOU_CAN_SELECT_ONLY')+' '+limit+' '+app.vtranslate('JS_ITEMS')});
 						return false;
 					}
 					var sourceFieldEle = jQuery(e.currentTarget);

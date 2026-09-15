@@ -128,6 +128,14 @@ class Vtiger_Detail_View extends Vtiger_Index_View {
 			}
 		}
 
+		global $PERFORMANCE_CONFIG;
+		if (isset($PERFORMANCE_CONFIG['DETAILVIEW_RECORD_NAVIGATION'])) {
+			/* reversed config var value */
+			$viewer->assign('NO_PAGINATION', !($PERFORMANCE_CONFIG['DETAILVIEW_RECORD_NAVIGATION']));
+		} else {
+			$viewer->assign('NO_PAGINATION', false);
+		}
+
 		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
 		if(!empty($prevRecordId)) {
 			$viewer->assign('PREVIOUS_RECORD_URL', $moduleModel->getDetailViewUrl($prevRecordId));
@@ -317,7 +325,7 @@ class Vtiger_Detail_View extends Vtiger_Index_View {
 		$viewer->assign('MODULE_NAME', $moduleName);
 		$viewer->assign('IS_AJAX_ENABLED', $this->isAjaxEnabled($recordModel));
 		$viewer->assign('MODULE', $moduleName);
-
+		$viewer->assign('DAY_STARTS','');
 		$picklistDependencyDatasource = Vtiger_DependencyPicklist::getPicklistDependencyDatasource($moduleName);
 		$viewer->assign('PICKIST_DEPENDENCY_DATASOURCE', Vtiger_Functions::jsonEncode($picklistDependencyDatasource));
 
@@ -439,7 +447,6 @@ class Vtiger_Detail_View extends Vtiger_Index_View {
 		$recordModel = Vtiger_Record_Model::getInstanceById($parentRecordId);
 		$viewer = $this->getViewer($request);
 		$viewer->assign('SOURCE',$recordModel->get('source'));
-        $recentActivities = ModTracker_Record_Model::getUpdates($parentRecordId, $pagingModel,$moduleName);
 
         $totalCount = ModTracker_Record_Model::getTotalRecordCount($parentRecordId);
         $pageLimit = $pagingModel->getPageLimit();
@@ -495,7 +502,7 @@ class Vtiger_Detail_View extends Vtiger_Index_View {
 			$rollupsettings = ModComments_Module_Model::getRollupSettingsForUser($currentUserModel, $moduleName);
 		}
 
-		if($rollupsettings['rollup_status']) {
+		if(isset($rollupsettings['rollup_status']) && $rollupsettings['rollup_status']) {
 			$parentRecordModel = Vtiger_Record_Model::getInstanceById($parentId, $moduleName);
 			$recentComments = $parentRecordModel->getRollupCommentsForModule(0, 6);
 		}else {
@@ -503,7 +510,7 @@ class Vtiger_Detail_View extends Vtiger_Index_View {
 		}
 
 		$pagingModel->calculatePageRange($recentComments);
-		if ($pagingModel->get('limit') < count($recentComments)) {
+		if ($pagingModel->get('limit') < php7_count($recentComments)) {
 			array_pop($recentComments);
 		}
 
@@ -520,9 +527,12 @@ class Vtiger_Detail_View extends Vtiger_Index_View {
 		$viewer->assign('MAX_UPLOAD_LIMIT_MB', Vtiger_Util_Helper::getMaxUploadSize());
 		$viewer->assign('MAX_UPLOAD_LIMIT_BYTES', Vtiger_Util_Helper::getMaxUploadSizeInBytes());
 		$viewer->assign('COMMENTS_MODULE_MODEL', $modCommentsModel);
-		$viewer->assign('ROLLUP_STATUS', $rollupsettings['rollup_status']);
-		$viewer->assign('ROLLUPID', $rollupsettings['rollupid']);
+		$viewer->assign('ROLLUP_STATUS', isset($rollupsettings['rollup_status']) ? 
+			$rollupsettings['rollup_status'] : false);
+		$viewer->assign('ROLLUPID', isset($rollupsettings['rollupid']) ?
+			$rollupsettings['rollupid'] : 0);
 		$viewer->assign('PARENT_RECORD', $parentId);
+		$viewer->assign('STARTINDEX', 0);
 
 		return $viewer->view('RecentComments.tpl', $moduleName, 'true');
 	}
@@ -575,7 +585,6 @@ class Vtiger_Detail_View extends Vtiger_Index_View {
 		$currentUserModel = Users_Record_Model::getCurrentUserModel();
 		$modCommentsModel = Vtiger_Module_Model::getInstance('ModComments');
 		$moduleName = $parentCommentModel->getParentRecordModel()->getModuleName();
-
 		$viewer = $this->getViewer($request);
 		$viewer->assign('PARENT_COMMENTS', $childComments);
 		$viewer->assign('CURRENTUSER', $currentUserModel);

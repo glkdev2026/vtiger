@@ -55,6 +55,7 @@ class Documents_List_View extends Vtiger_List_View {
 		 $tagParams = $request->get('tag_params');
 		$listHeaders = $request->get('list_headers', array());
 		$tag = $request->get('tag');
+		if (!is_numeric($tag)) $tag = "";
 		$requestViewName = $request->get('viewname');
 		$tagSessionKey = $moduleName.'_TAG';
 
@@ -93,15 +94,11 @@ class Documents_List_View extends Vtiger_List_View {
 			$orderBy = '';
 			$sortOrder = '';
 		}
-		if(empty($listHeaders)) {
+		if(empty($listHeaders) && $orderParams && isset($orderParams['list_headers'])) {
 			$listHeaders = $orderParams['list_headers'];
 		}
-		global $log;
-		$log->fatal(var_export($_REQUEST,true));
 		if(empty($orderBy) && empty($searchValue) && empty($pageNumber)) {
 			$orderParams = Vtiger_ListView_Model::getSortParamsSession($listViewSessionKey);
-			$log->fatal(var_export($orderParams,true));
-			$log->fatal($listViewSessionKey);
 			if($orderParams) {
 				$pageNumber = $orderParams['page'];
 				$orderBy = $orderParams['orderby'];
@@ -219,7 +216,7 @@ class Documents_List_View extends Vtiger_List_View {
 		if(!$this->listViewEntries){
 			$this->listViewEntries = $listViewModel->getListViewEntries($pagingModel);
 		}
-		$noOfEntries = count($this->listViewEntries);
+		$noOfEntries = php7_count($this->listViewEntries);
 
 		$viewer->assign('VIEWID', $cvId);
 		$viewer->assign('MODULE', $moduleName);
@@ -237,16 +234,16 @@ class Documents_List_View extends Vtiger_List_View {
 		}
 		$viewer->assign('PAGE_NUMBER',$pageNumber);
 
-		if(!$this->moduleFieldStructure) {
+		if(!isset($this->moduleFieldStructure)) {
 			$recordStructure = Vtiger_RecordStructure_Model::getInstanceForModule($listViewModel->getModule(), Vtiger_RecordStructure_Model::RECORD_STRUCTURE_MODE_FILTER);
 			$this->moduleFieldStructure = $recordStructure->getStructure();   
 		}
 
 		$currentUser = Users_Record_Model::getCurrentUserModel();
-		if(!$this->tags) {
+		if(!isset($this->tags)) {
 			$this->tags = Vtiger_Tag_Model::getAllAccessible($currentUser->id, $moduleName);
 		}
-		if(!$this->allUserTags) {
+		if(!isset($this->allUserTags)) {
 			$this->allUserTags = Vtiger_Tag_Model::getAllUserTags($currentUser->getId());
 		}
 

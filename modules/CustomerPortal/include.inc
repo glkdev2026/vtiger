@@ -10,7 +10,7 @@
 
 chdir(dirname(__FILE__).'/../../');
 
-include_once 'includes/Loader.php';
+require_once 'vendor/autoload.php';
 include_once 'includes/runtime/Globals.php';
 include_once 'include/Webservices/Relation.php';
 require_once 'include/utils/utils.php';
@@ -41,7 +41,6 @@ require_once 'vtlib/Vtiger/Runtime.php';
 include_once 'includes/runtime/Viewer.php';
 include_once 'includes/runtime/Theme.php';
 include_once 'includes/http/Request.php';
-include_once 'libraries/Smarty/libs/sysplugins/smarty_security.php';
 include_once dirname(__FILE__).'/helpers/Request.php';
 include_once dirname(__FILE__).'/helpers/Response.php';
 include_once dirname(__FILE__).'/helpers/Utils.php';

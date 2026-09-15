@@ -15,7 +15,8 @@ include_once 'vtlib/Vtiger/LinkData.php';
  * Provides API to handle custom links
  * @package vtlib
  */
-class Vtiger_Link {
+ #[\AllowDynamicProperties]
+ class Vtiger_Link {
 	var $tabid;
 	var $linkid;
 	var $linktype;
@@ -52,7 +53,7 @@ class Vtiger_Link {
 		$this->handler_path	=isset($valuemap['handler_path']) ? $valuemap['handler_path'] : null;
 		$this->handler_class=isset($valuemap['handler_class']) ? $valuemap['handler_class'] : null;
 		$this->handler		=isset($valuemap['handler']) ? $valuemap['handler'] : null;
-		$this->parent_link	=$valuemap['parent_link'];
+		$this->parent_link	= isset($valuemap['parent_link']) ? $valuemap['parent_link'] : null;
 	}
 
 	/**
@@ -116,9 +117,9 @@ class Vtiger_Link {
 			$params = Array($uniqueid, $tabid, $type, $label, $url, $iconpath, intval($sequence));
 			if(!empty($handlerInfo)) {
 				$sql .= (', handler_path, handler_class, handler');
-				$params[] = $handlerInfo['path'];
-				$params[] = $handlerInfo['class'];
-				$params[] = $handlerInfo['method'];
+				$params[] = isset($handlerInfo['path']) ? $handlerInfo['path'] : null;
+				$params[] = isset($handlerInfo['class'])? $handlerInfo['class'] : null;
+				$params[] = isset($handlerInfo['method'])? $handlerInfo['method'] : null;
 			}
 			if(!empty($parentLink)) {
 				$sql .= ',parent_link';
@@ -188,19 +189,19 @@ class Vtiger_Link {
 				$multitype = true;
 				if($tabid === self::IGNORE_MODULE) {
 					$sql = 'SELECT * FROM vtiger_links WHERE linktype IN ('.
-						Vtiger_Utils::implodestr('?', count($type), ',') .') ';
+						Vtiger_Utils::implodestr('?', php7_count($type), ',') .') ';
 					$params = $type;
 					$permittedTabIdList = getPermittedModuleIdList();
-					if(count($permittedTabIdList) > 0 && $current_user->is_admin !== 'on') {
+					if(php7_count($permittedTabIdList) > 0 && $current_user->is_admin !== 'on') {
 						array_push($permittedTabIdList, 0);	// Added to support one link for all modules
 						$sql .= ' and tabid IN ('.
-							Vtiger_Utils::implodestr('?', count($permittedTabIdList), ',').')';
+							Vtiger_Utils::implodestr('?', php7_count($permittedTabIdList), ',').')';
 						$params[] = $permittedTabIdList;
 					}
 					$result = $adb->pquery($sql, Array($adb->flatten_array($params)));
 				} else {
 					$result = $adb->pquery('SELECT * FROM vtiger_links WHERE (tabid=? OR tabid=0) AND linktype IN ('.
-						Vtiger_Utils::implodestr('?', count($type), ',') .')',
+						Vtiger_Utils::implodestr('?', php7_count($type), ',') .')',
 							Array($tabid, $adb->flatten_array($type)));
 				}			
 			} else {

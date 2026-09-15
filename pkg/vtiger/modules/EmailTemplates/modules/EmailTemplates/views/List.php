@@ -10,6 +10,9 @@
 
 class EmailTemplates_List_View extends Vtiger_Index_View {
 
+
+	protected $listviewinitcalled = false;
+
 	function __construct() {
 		parent::__construct();
 	}
@@ -64,7 +67,7 @@ class EmailTemplates_List_View extends Vtiger_Index_View {
 		$orderParams = Vtiger_ListView_Model::getSortParamsSession($moduleName);
 		// TODO : need to remove this when vtiger6 is removed
 		$defaultLayout = Vtiger_Viewer::getDefaultLayoutName();
-		if($orderParams['viewType'] == 'grid' && $defaultLayout == 'v7'){
+		if(isset($orderParams['viewType']) && $orderParams['viewType'] == 'grid' && $defaultLayout == 'v7'){
 			$viewer->view('GridViewContents.tpl',$moduleName);
 		} else {
 			$viewer->view('ListViewContents.tpl', $moduleName);
@@ -83,17 +86,21 @@ class EmailTemplates_List_View extends Vtiger_Index_View {
 	 * Function to initialize the required data in smarty to display the List View Contents
 	 */
 	public function initializeListViewContents(Vtiger_Request $request, Vtiger_Viewer $viewer) {
-		$moduleName = $request->getModule();
-		$cvId = $request->get('viewname');
-		$viewType = $request->get('viewType');
-		$pageNumber = $request->get('page');
-		$orderBy = $request->get('orderby');
-		$sortOrder = $request->get('sortorder');
-		$searchKey = $request->get('search_key');
-		$searchValue = $request->get('search_value');
-		$sourceModule = $request->get('sourceModule');
-		$operator = $request->get('operator');
-		$orderParams = Vtiger_ListView_Model::getSortParamsSession($moduleName);
+
+		if($this->listviewinitcalled){
+			return;
+		}
+			$moduleName = $request->getModule();
+			$cvId = $request->get('viewname');
+			$viewType = $request->get('viewType');
+			$pageNumber = $request->get('page');
+			$orderBy = $request->get('orderby');
+			$sortOrder = $request->get('sortorder');
+			$searchKey = $request->get('search_key');
+			$searchValue = $request->get('search_value');
+			$sourceModule = $request->get('sourceModule');
+			$operator = $request->get('operator');
+			$orderParams = Vtiger_ListView_Model::getSortParamsSession($moduleName);
 		if ($request->get('mode') == 'removeAlphabetSearch') {
 			Vtiger_ListView_Model::deleteParamsSession($moduleName, array('search_key', 'search_value', 'operator'));
 			$searchKey = '';
@@ -142,7 +149,7 @@ class EmailTemplates_List_View extends Vtiger_Index_View {
 		$linkModels = $listViewModel->getListViewMassActions($linkParams);
 
 		// preProcess is already loading this, we can reuse
-		if (!$this->pagingModel) {
+		if (!property_exists($this, 'pagingModel') || !$this->pagingModel) {
 			$pagingModel = new Vtiger_Paging_Model();
 			$pagingModel->set('page', $pageNumber);
 		} else {
@@ -175,22 +182,22 @@ class EmailTemplates_List_View extends Vtiger_Index_View {
 
 		$listViewModel->set('viewType',$viewType);
 
-		if (!$this->listViewHeaders) {
+		if (!property_exists($this, 'listViewHeaders') || !$this->listViewHeaders) {
 			$this->listViewHeaders = $listViewModel->getListViewHeaders();
 		}
-		if (!$this->listViewEntries) {
+		if (!property_exists($this, 'listViewEntries') || !$this->listViewEntries) {
 			$this->listViewEntries = $listViewModel->getListViewEntries($pagingModel);
 		}
 
-		if (!$this->pagingModel) {
+		if (!property_exists($this, 'pagingModel') || !$this->pagingModel) {
 			$this->pagingModel = $pagingModel;
 		}
 
-		$noOfEntries = count($this->listViewEntries);
+		$noOfEntries = php7_count($this->listViewEntries);
 		$viewer->assign('VIEWID', $cvId);
 		$viewer->assign('MODULE', $moduleName);
 
-		if (!$this->listViewLinks) {
+		if (!property_exists($this, 'listViewLinks') || !$this->listViewLinks) {
 			$this->listViewLinks = $listViewModel->getListViewLinks($linkParams);
 		}
 		$viewer->assign('LISTVIEW_LINKS', $this->listViewLinks);
@@ -220,6 +227,8 @@ class EmailTemplates_List_View extends Vtiger_Index_View {
 		$viewer->assign('IS_CREATE_PERMITTED', $listViewModel->getModule()->isPermitted('CreateView'));
 		$viewer->assign('IS_MODULE_EDITABLE', $listViewModel->getModule()->isPermitted('EditView'));
 		$viewer->assign('IS_MODULE_DELETABLE', $listViewModel->getModule()->isPermitted('Delete'));
+
+		$this->listviewinitcalled = true; // to make a early exit if it is called more than once
 	}
 
 	/**

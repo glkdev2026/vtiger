@@ -16,8 +16,10 @@ class Calendar_Feed_Action extends Vtiger_BasicAjax_Action {
 		if($request->get('mode') === 'batch') {
 			$feedsRequest = $request->get('feedsRequest',array());
 			$result = array();
-			if(count($feedsRequest)) {
+			if(php7_count($feedsRequest)) {
 				foreach($feedsRequest as $key=>$value) {
+					$value = vtlib_array($value); // isset guarded.
+
 					$requestParams = array();
 					$requestParams['start'] = $value['start'];
 					$requestParams['end'] = $value['end'];
@@ -92,6 +94,10 @@ class Calendar_Feed_Action extends Vtiger_BasicAjax_Action {
 	}
 
 	protected function pullDetails($start, $end, &$result, $type, $fieldName, $color = null, $textColor = 'white', $conditions = '') {
+		//+angelo
+		$start = DateTimeField::convertToDBFormat($start);
+		$end = DateTimeField::convertToDBFormat($end);
+		//-angelo
 		$moduleModel = Vtiger_Module_Model::getInstance($type);
 		$nameFields = $moduleModel->getNameFields();
 		foreach($nameFields as $i => $nameField) {
@@ -103,7 +109,7 @@ class Calendar_Feed_Action extends Vtiger_BasicAjax_Action {
 		$nameFields = array_values($nameFields);
 		$selectFields = implode(',', $nameFields);		
 		$fieldsList = explode(',', $fieldName);
-		if(count($fieldsList) == 2) {
+		if(php7_count($fieldsList) == 2) {
 			$db = PearDatabase::getInstance();
 			$user = Users_Record_Model::getCurrentUserModel();
 			$userAndGroupIds = array_merge(array($user->getId()),$this->getGroupsIdsForUsers($user->getId()));
@@ -126,8 +132,8 @@ class Calendar_Feed_Action extends Vtiger_BasicAjax_Action {
 			}
 		} else {
 			if($fieldName == 'birthday') {
-				$startDateComponents = split('-', $start);
-				$endDateComponents = split('-', $end);
+				$startDateComponents = explode('-', $start);
+				$endDateComponents = explode('-', $end);
 
 				$year = $startDateComponents[0];
 				$db = PearDatabase::getInstance();
@@ -175,7 +181,7 @@ class Calendar_Feed_Action extends Vtiger_BasicAjax_Action {
 			list ($modid, $crmid) = vtws_getIdComponents($record['id']);
 			$item['id'] = $crmid;
 			$item['title'] = decode_html($record[$nameFields[0]]);
-			if(count($nameFields) > 1) {
+			if(php7_count($nameFields) > 1) {
 				$item['title'] = decode_html(trim($record[$nameFields[0]].' '.$record[$nameFields[1]]));
 			}
 			if(!empty($record[$fieldsList[0]])) {
@@ -183,7 +189,7 @@ class Calendar_Feed_Action extends Vtiger_BasicAjax_Action {
 			} else {
 				$item['start'] = $record[$fieldsList[1]];
 			}
-			if(count($fieldsList) == 2) {
+			if(php7_count($fieldsList) == 2) {
 				$item['end'] = $record[$fieldsList[1]];
 			}
 			if($fieldName == 'birthday') {
@@ -208,7 +214,7 @@ class Calendar_Feed_Action extends Vtiger_BasicAjax_Action {
 			$item['sourceModule'] = $moduleModel->getName();
 			$item['fieldName'] = $fieldName;
 			$item['conditions'] = '';
-			$item['end'] = date('Y-m-d', strtotime(($item['end'] ?: $item['start']).' +1day'));
+			$item['end'] = date('Y-m-d', strtotime((isset($item['end']) ? $item['end']: $item['start']).' +1day'));
                         if(!empty($conditions)) {
                             $item['conditions'] = Zend_Json::encode(Zend_Json::encode($conditions));
                         }
@@ -400,6 +406,11 @@ class Calendar_Feed_Action extends Vtiger_BasicAjax_Action {
 		if($hideCompleted)
 			$query.= "vtiger_activity.status != 'Completed' AND ";
 		$query.= " ((date_start >= ? AND due_date < ? ) OR ( due_date >= ? ))";
+
+		//+angelo
+		$start = DateTimeField::__convertToDBFormat($start, $user->get('date_format'));
+		$end = DateTimeField::__convertToDBFormat($end, $user->get('date_format'));
+		//-angelo
 		$params=array($start,$end,$start);
 		$userIds = $userAndGroupIds;
 		$query.= " AND vtiger_crmentity.smownerid IN (".generateQuestionMarks($userIds).")";

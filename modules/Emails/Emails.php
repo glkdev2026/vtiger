@@ -65,6 +65,7 @@ class Emails extends CRMEntity {
 	// Refers to vtiger_field.fieldname values.
 	var $mandatory_fields = Array('subject', 'assigned_user_id');
 
+
 	/** This function will set the columnfields for Email module
 	 */
         function __construct() {
@@ -81,10 +82,11 @@ class Emails extends CRMEntity {
 
 	function save_module($module) {
 		global $adb;
+		$insertion_mode = '';
 		//Inserting into seactivityrel
 		//modified by Richie as raju's implementation broke the feature for addition of webmail to vtiger_crmentity.need to be more careful in future while integrating code
-		if ($_REQUEST['module'] == "Emails" && $_REQUEST['smodule'] != 'webmails' && (!$this->plugin_save)) {
-			if ($_REQUEST['currentid'] != '') {
+		if (isset($_REQUEST['module']) && $_REQUEST['module'] == "Emails" && $_REQUEST['module'] != 'webmails' && (!$this->plugin_save)) {
+			if (isset($_REQUEST['currentid']) && $_REQUEST['currentid'] != '') {
 				$actid = $_REQUEST['currentid'];
 			} else {
 				$actid = $_REQUEST['record'];
@@ -98,7 +100,7 @@ class Emails extends CRMEntity {
 				$adb->pquery($mysql, array($parentid, $actid));
 			} else {
 				$myids = explode("|", $parentid);  //2@71|
-				for ($i = 0; $i < (count($myids) - 1); $i++) {
+				for ($i = 0; $i < (php7_count($myids) - 1); $i++) {
 					$realid = explode("@", $myids[$i]);
 					$mycrmid = $realid[0];
 					//added to handle the relationship of emails with vtiger_users
@@ -152,7 +154,7 @@ class Emails extends CRMEntity {
 		$recordIds = array();
 		if(strpos($recordIdsStr, '@') !== false && strpos($recordIdsStr, '|') !== false) {
 			$recordIdsParts = explode('|', $recordIdsStr);
-			for ($i = 0; $i < (count($recordIdsParts) - 1); $i++) {
+			for ($i = 0; $i < (php7_count($recordIdsParts) - 1); $i++) {
 				$recordIdParts = explode('@', $recordIdsParts[$i]);
 				//filter user records 
 				if($recordIdParts[1] !== -1) {
@@ -170,7 +172,7 @@ class Emails extends CRMEntity {
 		$file_saved = false;
 
 		//Added to send generated Invoice PDF with mail
-		$pdfAttached = $_REQUEST['pdf_attachment'];
+		$pdfAttached = isset($_REQUEST['pdf_attachment']) ? $_REQUEST['pdf_attachment'] : false;
 		//created Invoice pdf is attached with the mail
 		if (isset($_REQUEST['pdf_attachment']) && $_REQUEST['pdf_attachment'] != '') {
 			$file_saved = pdfAttach($this, $module, $pdfAttached, $id);
@@ -180,7 +182,7 @@ class Emails extends CRMEntity {
 			//This is to added to store the existing attachment id of the contact where we should delete this when we give new image
 			foreach ($_FILES as $fileindex => $files) {
 				if ($files['name'] != '' && $files['size'] > 0) {
-					$files['original_name'] = vtlib_purify($_REQUEST[$fileindex . '_hidden']);
+					$files['original_name'] = isset($_REQUEST[$fileindex . '_hidden']) ? vtlib_purify($_REQUEST[$fileindex . '_hidden']):"";
 					$file_saved = $this->uploadAndSaveFile($id, $module, $files);
 				}
 			}
@@ -188,7 +190,7 @@ class Emails extends CRMEntity {
 
 		if ($module == 'Emails' && isset($_REQUEST['att_id_list']) && $_REQUEST['att_id_list'] != '') {
 			$att_lists = explode(";", $_REQUEST['att_id_list'], -1);
-			$id_cnt = count($att_lists);
+			$id_cnt = php7_count($att_lists);
 			if ($id_cnt != 0) {
 				for ($i = 0; $i < $id_cnt; $i++) {
 					$sql_rel = 'insert into vtiger_seattachmentsrel values(?,?)';
@@ -196,7 +198,7 @@ class Emails extends CRMEntity {
 				}
 			}
 		}
-		if ($_REQUEST['att_module'] == 'Webmails') {
+		if (isset($_REQUEST['att_module']) && $_REQUEST['att_module'] == 'Webmails') {
 			require_once("modules/Webmails/Webmails.php");
 			require_once("modules/Webmails/MailParse.php");
 			require_once('modules/Webmails/MailBox.php');
@@ -530,8 +532,8 @@ class Emails extends CRMEntity {
 			$sharingRuleInfoVariable = $module . '_share_read_permission';
 			$sharingRuleInfo = $sharingRuleInfoVariable;
 			$sharedTabId = null;
-			if (!empty($sharingRuleInfo) && (count($sharingRuleInfo['ROLE']) > 0 ||
-					count($sharingRuleInfo['GROUP']) > 0)) {
+			if (is_array($sharingRuleInfo) && !empty($sharingRuleInfo) && (php7_count($sharingRuleInfo['ROLE']) > 0 ||
+					php7_count($sharingRuleInfo['GROUP']) > 0)) {
 				$tableName = $tableName . '_t' . $tabId;
 				$sharedTabId = $tabId;
 			}
@@ -627,13 +629,13 @@ class Emails extends CRMEntity {
 		$idlists = $adb->query_result($result,0,'idlists');
 		$idlistsArray = explode('|', $idlists);
 
-		for ($i=0; $i<(count($idlistsArray)-1); $i++) {
+		for ($i=0; $i<(php7_count($idlistsArray)-1); $i++) {
 			$crmid = explode("@",$idlistsArray[$i]);
 			array_push($successIds, $crmid[0]);
 		}
 		$successIds = array_unique($successIds);
 		sort($successIds);
-		for ($i=0; $i<count($successIds); $i++) {
+		for ($i=0; $i<php7_count($successIds); $i++) {
 			$adb->pquery("INSERT INTO vtiger_email_track(crmid, mailid,  access_count) VALUES(?,?,?)", array($successIds[$i], $mailid, 0));
 		}
 	}

@@ -11,6 +11,7 @@
 require_once 'includes/runtime/Cache.php';
 require_once 'vtlib/Vtiger/Runtime.php';
 
+#[\AllowDynamicProperties]
 class WebserviceField{
 	private $fieldId;
 	private $uitype;
@@ -48,28 +49,30 @@ class WebserviceField{
 	private $readOnly = 0;
 	private $isunique = 0;
 
+	public $parentReferenceField; //To avoid undefined property warning.
+
 	private function __construct($adb,$row){
-		$this->uitype = $row['uitype'];
-		$this->blockId = $row['block'];
+		$this->uitype = isset($row['uitype'])? $row['uitype'] : 0;
+		$this->blockId = isset($row['block'])? $row['block'] : 0;
 		$this->blockName = null;
-		$this->tableName = $row['tablename'];
-		$this->columnName = $row['columnname'];
-		$this->fieldName = $row['fieldname'];
-		$this->fieldLabel = $row['fieldlabel'];
-		$this->displayType = $row['displaytype'];
-		$this->massEditable = ($row['masseditable'] === '1')? true: false;
-		$this->presence = $row['presence'];
-		$this->isunique = ($row['isunique']) ? true : false;
-		$typeOfData = $row['typeofdata'];
+		$this->tableName = isset($row['tablename'])? $row['tablename'] : null;
+		$this->columnName = isset($row['columnname'])? $row['columnname'] : null;
+		$this->fieldName = isset($row['fieldname'])? $row['fieldname'] : null;
+		$this->fieldLabel = isset($row['fieldlabel'])? $row['fieldlabel'] : null;
+		$this->displayType = isset($row['displaytype'])? $row['displaytype'] : null;
+		$this->massEditable = (isset($row['masseditable']) && $row['masseditable'] === '1')? true: false;
+		$this->presence = isset($row['presence'])? $row['presence'] : null;
+		$this->isunique = isset($row['isunique']) && $row['isunique'] ? true : false;
+		$typeOfData = isset($row['typeofdata'])? $row['typeofdata'] : null;
 		$this->typeOfData = $typeOfData;
-		$typeOfData = explode("~",$typeOfData);
-		$this->mandatory = ($typeOfData[1] == 'M')? true: false;
+		$typeOfData = explode("~",$typeOfData ? $typeOfData : "");
+		$this->mandatory = (php7_count($typeOfData) > 1 && $typeOfData[1] == 'M')? true: false;
 		if($this->uitype == 4){
 			$this->mandatory = false;
 		}
 		$this->fieldType = $typeOfData[0];
-		$this->tabid = $row['tabid'];
-		$this->fieldId = $row['fieldid'];
+		$this->tabid = isset($row['tabid'])? $row['tabid']: 0;
+		$this->fieldId = isset($row['fieldid'])? $row['fieldid'] : 0;
 		$this->pearDB = $adb;
 		$this->fieldDataType = null;
 		$this->dataFromMeta = false;
@@ -258,7 +261,7 @@ class WebserviceField{
 			$referenceTypes = array();
 			if($this->getUIType() != $this->genericUIType){
 				$sql = "select type from vtiger_ws_referencetype where fieldtypeid=?";
-				$params = array($fieldTypeData['fieldtypeid']);
+				$params = array(isset($fieldTypeData['fieldtypeid'])? $fieldTypeData['fieldtypeid'] : 0);
 			}else{
 				$sql = 'SELECT relmodule AS type FROM vtiger_fieldmodulerel WHERE fieldid=? ORDER BY sequence ASC';
 				$params = array($this->getFieldId());
@@ -412,7 +415,7 @@ class WebserviceField{
 		}else{
 			$user = VTWS_PreserveGlobal::getGlobal('current_user');
 			$details = getPickListValues($fieldName,$user->roleid);
-			for($i=0;$i<sizeof($details);++$i){
+			for($i=0;$i<php7_sizeof($details);++$i){
 				$elem = array();
 				$picklistValue = decode_html($details[$i]);
 				$elem["label"] = getTranslatedString($picklistValue, $moduleName, $language);

@@ -65,13 +65,14 @@ class Vtiger_RecordQuickPreview_View extends Vtiger_Index_View {
 		$viewer->assign('SHOW_ENGAGEMENTS', 'false');
 		$recentActivities = ModTracker_Record_Model::getUpdates($recordId, $pagingModel, $moduleName);
 		//To show more button for updates if there are more than 5 records
-		if (count($recentActivities) >= 5) {
+		if (php7_count($recentActivities) >= 5) {
 			$pagingModel->set('nextPageExists', true);
 		} else {
 			$pagingModel->set('nextPageExists', false);
 		}
 		$viewer->assign('PAGING_MODEL', $pagingModel);
 		$viewer->assign('RECENT_ACTIVITIES', $recentActivities);
+                $viewer->assign('RECORD_ID', $recordId);
 		$viewer->view('ListViewQuickPreview.tpl', $moduleName);
 	}
 

@@ -28,11 +28,14 @@ require_once('include/utils/UserInfoUtil.php');
 require_once("include/Zend/Json.php");
 require_once 'include/RelatedListView.php';
 
+#[\AllowDynamicProperties]
 class CRMEntity {
 
 	var $ownedby;
 	var $recordSource = 'CRM';
+	var $mode;
 
+	public $moduleName;
 	/**
 	 * Detect if we are in bulk save mode, where some features can be turned-off
 	 * to improve performance.
@@ -112,7 +115,7 @@ class CRMEntity {
 		}
 
 		// added to support files transformation for file upload fields like uitype 69, 
-		if(!empty($_FILES) && count($_FILES)) {
+		if(!empty($_FILES) && php7_count($_FILES)) {
 			$_FILES = Vtiger_Util_Helper::transformUploadedFiles($_FILES, true);
 		}
 
@@ -131,7 +134,8 @@ class CRMEntity {
 		$this->db->completeTransaction();
 
 		// vtlib customization: Hook provide to enable generic module relation.
-		if ($_REQUEST['createmode'] == 'link' && !$_REQUEST['__linkcreated']) {
+		if ( (isset($_REQUEST['createmode']) && $_REQUEST['createmode'] == 'link') && 
+			!isset($_REQUEST['__linkcreated'])) {
 			$_REQUEST['__linkcreated'] = true;
 			$for_module = vtlib_purify($_REQUEST['return_module']);
 			$for_crmid = vtlib_purify($_REQUEST['return_id']);
@@ -156,7 +160,7 @@ class CRMEntity {
 	 */
 	function uploadAndSaveFile($id, $module, $file_details, $attachmentType='Attachment') {
 		global $log;
-		$log->debug("Entering into uploadAndSaveFile($id,$module,$file_details) method.");
+		$log->debug("Entering into uploadAndSaveFile($id,$module) method.");
 
 		global $adb, $current_user;
 		global $upload_badext;
@@ -175,7 +179,7 @@ class CRMEntity {
 		}
 
 		// Check 1
-		$save_file = 'true';
+		$save_file = true;
 		//only images are allowed for Image Attachmenttype
 		$mimeType = vtlib_mime_content_type($file_details['tmp_name']);
 		$mimeTypeContents = explode('/', $mimeType);
@@ -184,12 +188,12 @@ class CRMEntity {
 			$save_file = validateImageFile($file_details);
 		}
                 $log->debug("File Validation status in Check1 save_file => $save_file");
-		if ($save_file == 'false') {
+		if (!$save_file) {
 			return false;
 		}
 
 		// Check 2
-		$save_file = 'true';
+		$save_file = true;
 		//only images are allowed for these modules
 		if ($module == 'Contacts' || $module == 'Products') {
 			$save_file = validateImageFile($file_details);
@@ -211,7 +215,7 @@ class CRMEntity {
 		$upload_status = copy($filetmp_name, $upload_file_path . $current_id . "_" . $encryptFileName);
 		// temporary file will be deleted at the end of request
                 $log->debug("Upload status of file => $upload_status");
-		if ($save_file == 'true' && $upload_status == 'true') {
+		if ($save_file && $upload_status == 'true') {
 			if($attachmentType != 'Image' && $this->mode == 'edit') {
 				//Only one Attachment per entity delete previous attachments
 				$res = $adb->pquery('SELECT vtiger_seattachmentsrel.attachmentsid FROM vtiger_seattachmentsrel 
@@ -221,7 +225,7 @@ class CRMEntity {
 				for($attachItr = 0;$attachItr < $adb->num_rows($res);$attachItr++) {
 					$oldAttachmentIds[] = $adb->query_result($res,$attachItr,'attachmentsid');
 				}
-				if(count($oldAttachmentIds)) {
+				if(php7_count($oldAttachmentIds)) {
 					$adb->pquery('DELETE FROM vtiger_seattachmentsrel WHERE attachmentsid IN ('.generateQuestionMarks($oldAttachmentIds).')',$oldAttachmentIds);
 					//TODO : revisit to delete actual file and attachment entry,as we need to see the deleted file in the history when its changed
 					//$adb->pquery('DELETE FROM vtiger_attachments WHERE attachmentsid IN ('.generateQuestionMarks($oldAttachmentIds).')',$oldAttachmentIds);
@@ -266,6 +270,7 @@ class CRMEntity {
 
 		$ownerid = $this->column_fields['assigned_user_id'];
 		$groupid = $this->column_fields['group_id'];
+		$insertion_mode = $this->mode;
 
 		if (empty($groupid))
 			$groupid = 0;
@@ -364,7 +369,7 @@ class CRMEntity {
 				$source = strtoupper($this->recordSource);
 			}
 
-			$description_val = from_html($this->column_fields['description'], ($insertion_mode == 'edit') ? true : false);
+			$description_val = from_html($this->column_fields['description'], ($this->mode == 'edit') ? true : false);
 			$params = array("crmid" => $current_id, "smcreatorid" => $current_user->id, "smownerid" => $ownerid, 
 							"smgroupid" => $groupid, "setype" => $module, "description" => $description_val,
 							"modifiedby" => $current_user->id, "createdtime" => $created_date_var, 
@@ -406,12 +411,13 @@ class CRMEntity {
 		global $current_user, $app_strings;
 		$log->info("function insertIntoEntityTable " . $module . ' vtiger_table name ' . $table_name);
 		global $adb;
+		global $_FILES;
 		$insertion_mode = $this->mode;
         $table_name = Vtiger_Util_Helper::validateStringForSql($table_name);
+		$tablekey = $this->tab_name_index[$table_name];
         
 		//Checkin whether an entry is already is present in the vtiger_table to update
 		if ($insertion_mode == 'edit') {
-			$tablekey = $this->tab_name_index[$table_name];
 			// Make selection on the primary key of the module table to check.
 			$check_query = "select $tablekey from $table_name where $tablekey=?";
 			$check_params = array($this->id);
@@ -445,7 +451,7 @@ class CRMEntity {
 			} else {
 				$profileList = getCurrentUserProfileList();
 
-				if (count($profileList) > 0) {
+				if (php7_count($profileList) > 0) {
 					$sql = "SELECT vtiger_field.fieldname,vtiger_field.columnname,vtiger_field.uitype,vtiger_field.generatedtype,vtiger_field.typeofdata FROM vtiger_field
 						INNER JOIN vtiger_profile2field
 						ON vtiger_profile2field.fieldid = vtiger_field.fieldid
@@ -505,7 +511,7 @@ class CRMEntity {
 			}
 		} else { // Useful when doing bulk save
 			$result = $_privatecache[$cachekey];
-			$noofrows = count($result);
+			$noofrows = php7_count($result);
 		}
 
 		for ($i = 0; $i < $noofrows; $i++) {
@@ -520,9 +526,11 @@ class CRMEntity {
 			$datatype = $typeofdata_array[0];
 
 			$ajaxSave = false;
-			if (($_REQUEST['file'] == 'DetailViewAjax' && $_REQUEST['ajxaction'] == 'DETAILVIEW'
-						&& isset($_REQUEST["fldName"]) && $_REQUEST["fldName"] != $fieldname)
-					|| ($_REQUEST['action'] == 'MassEditSave' && !isset($_REQUEST[$fieldname."_mass_edit_check"]))) {
+			if ( (isset($_REQUEST['file']) && $_REQUEST['file'] == 'DetailViewAjax') && 
+				(isset($_REQUEST['ajaxaction']) && $_REQUEST['ajxaction'] == 'DETAILVIEW') && 
+				(isset($_REQUEST["fldName"]) && $_REQUEST["fldName"] != $fieldname) || 
+				((isset($_REQUEST['action']) && $_REQUEST['action'] == 'MassEditSave') && 
+				!isset($_REQUEST[$fieldname."_mass_edit_check"]))) {
 				$ajaxSave = true;
 			}
 
@@ -566,7 +574,7 @@ class CRMEntity {
 					} else {
 						$fldvalue = $this->column_fields[$fieldname];
 					}
-				} elseif ($uitype == 7) {
+				} elseif ($uitype == 7 || $uitype == 9) {
 					//strip out the spaces and commas in numbers if given ie., in amounts there may be ,
 					$fldvalue = str_replace(",", "", $this->column_fields[$fieldname]); //trim($this->column_fields[$fieldname],",");
 					if (in_array($datatype, array('N', 'NN'))) {
@@ -594,7 +602,7 @@ class CRMEntity {
 						$fldvalue = decode_html($this->column_fields[$fieldname]);
 					}
 				} elseif ($uitype == 8) {
-					$this->column_fields[$fieldname] = rtrim($this->column_fields[$fieldname], ',');
+					$this->column_fields[$fieldname] = isset($this->column_fields[$fieldname]) ? rtrim($this->column_fields[$fieldname], ',') : '';
 					$ids = explode(',', $this->column_fields[$fieldname]);
 					$json = new Zend_Json();
 					$fldvalue = $json->encode($ids);
@@ -619,7 +627,7 @@ class CRMEntity {
 					$fldvalue = CurrencyField::convertToDBFormat($this->column_fields[$fieldname]);
 				} elseif ($uitype == 69) {
 					$fldvalue = $this->column_fields[$fieldname];
-					if(count($_FILES)) {
+					if(php7_count($_FILES)) {
 						$IMG_FILES = $_FILES[$fieldname];
 						if($_REQUEST['action'] == 'MassSave' || $_REQUEST['action'] == 'MassEditSave') {
 							if($IMG_FILES[0]['error'] == 0) {
@@ -631,7 +639,7 @@ class CRMEntity {
 								for($itr = 0;$itr < $adb->num_rows($oldAttachmentsRes);$itr++) {
 									$oldImageAttachmentIds[] = $adb->query_result($oldAttachmentsRes,$itr,'attachmentsid');
 								}
-								if(count($oldImageAttachmentIds)) {
+								if(php7_count($oldImageAttachmentIds)) {
 									$adb->pquery('DELETE FROM vtiger_seattachmentsrel WHERE attachmentsid IN ('.generateQuestionMarks($oldImageAttachmentIds).')',$oldImageAttachmentIds);
 									$adb->pquery('DELETE FROM vtiger_attachments WHERE attachmentsid IN ('.generateQuestionMarks($oldImageAttachmentIds).')',$oldImageAttachmentIds);
 									$adb->pquery('DELETE FROM vtiger_crmentity WHERE crmid IN ('.generateQuestionMarks($oldImageAttachmentIds).')',$oldImageAttachmentIds);
@@ -639,12 +647,12 @@ class CRMEntity {
 							}
 						}
 						$uploadedFileNames = array();
-						if(count($IMG_FILES)){
+						if(php7_count($IMG_FILES)){
 							foreach($IMG_FILES as $fileIndex => $file) {
 								if($file['error'] == 0 && $file['name'] != '' && $file['size'] > 0) {
-									if($_REQUEST[$fileIndex.'_hidden'] != '')
-										$file['original_name'] = vtlib_purify($_REQUEST[$fileindex.'_hidden']);
-									else {
+									if(isset($_REQUEST[$fileIndex.'_hidden']) && $_REQUEST[$fileIndex.'_hidden'] != '') {
+										$file['original_name'] = vtlib_purify($_REQUEST[$fileIndex.'_hidden']);
+									} else {
 										$file['original_name'] = stripslashes($file['name']);
 									}
 									$file['original_name'] = str_replace('"','',$file['original_name']);
@@ -655,13 +663,13 @@ class CRMEntity {
 								}
 							}
 						}
-						if(count($uploadedFileNames)) {
+						if(php7_count($uploadedFileNames)) {
 							$fldvalue = implode(',',$uploadedFileNames);
 						} else {
 							$skipUpdateForField = true;
 						}
 					}
-					if (($insertion_mode == 'edit' && $skipUpdateForField == false) || $_REQUEST['imgDeleted']) {
+					if (($insertion_mode == 'edit' && $skipUpdateForField == false) || (isset($_REQUEST['imgDeleted']) && $_REQUEST['imgDeleted'])) {
 						$skipUpdateForField = false;
 						$uploadedFileNames = array();
 						$getImageNamesSql = 'SELECT name FROM vtiger_seattachmentsrel INNER JOIN vtiger_attachments ON
@@ -675,13 +683,14 @@ class CRMEntity {
 						}
 						$fldvalue = implode(',',$uploadedFileNames);
 					}
-				}elseif ($uitype == 61 && count($_FILES)) {
+				}elseif ($uitype == 61 && php7_count($_FILES)) {
 					if($module == "ModComments") {
 						$UPLOADED_FILES = $_FILES[$fieldname];
+						$uploadedFileNames = array();
 						foreach($UPLOADED_FILES as $fileIndex => $file) {
 							if($file['error'] == 0 && $file['name'] != '' && $file['size'] > 0) {
-								if($_REQUEST[$fileindex.'_hidden'] != '') {
-									$file['original_name'] = vtlib_purify($_REQUEST[$fileindex.'_hidden']);
+								if(isset($_REQUEST[$fileIndex.'_hidden']) && $_REQUEST[$fileIndex.'_hidden'] != '') {
+									$file['original_name'] = vtlib_purify($_REQUEST[$fileIndex.'_hidden']);
 								} else {
 									$file['original_name'] = stripslashes($file['name']);
 								}
@@ -692,7 +701,7 @@ class CRMEntity {
 								}
 							} 
 						}
-						if(count($uploadedFileNames)) {
+						if(php7_count($uploadedFileNames)) {
 							$fldvalue = implode(',',$uploadedFileNames);
 						} else {
 							$skipUpdateForField = true;
@@ -735,17 +744,21 @@ class CRMEntity {
 			//Track the update and update only when needed - vikas
 			$updateFieldValues = @array_combine($updateColumnNames, $update_params);
 			$changedFields =  $this->column_fields->getChanged();
-			if(count($changedFields) > 0) {
+			if(php7_count($changedFields) > 0) {
 				$update = array();
 				$update_params = array();
 				foreach($changedFields as $field) {
+					if (!array_key_exists($field, $updateFieldNameColumnNameMap)) {
+						continue;
+					}
+
 					$fieldColumn = $updateFieldNameColumnNameMap[$field];
-					if(@array_key_exists($fieldColumn, $updateFieldValues)) {
+					if(array_key_exists($fieldColumn, $updateFieldValues)) {
 						array_push($update, $fieldColumn.'=?');
 						array_push($update_params, $updateFieldValues[$fieldColumn]);
 					}
 				}
-				if (count($update) > 0) {
+				if (php7_count($update) > 0) {
 					$sql1 = "UPDATE $table_name SET " . implode(",", $update) . " WHERE " . $this->tab_name_index[$table_name] . "=?";
 					array_push($update_params, $this->id);
 					if(Vtiger_Functions::isUserSpecificFieldTable($table_name, $module)){
@@ -932,7 +945,7 @@ class CRMEntity {
 					$entityFields = Vtiger_Functions::getEntityModuleInfo($module);
 					if(!empty($entityFields['fieldname'])) {
 						$entityFieldNames  = explode(',', $entityFields['fieldname']);
-						if(count($entityFieldNames) > 1) {
+						if(php7_count($entityFieldNames) > 1) {
 							 $this->column_fields['label'] = $resultrow[$entityFields['tablename'].$entityFieldNames[0]].' '.$resultrow[$entityFields['tablename'].$entityFieldNames[1]];
 						} else {
 							$this->column_fields['label'] = $resultrow[$entityFields['tablename'].$entityFieldNames[0]];
@@ -946,6 +959,13 @@ class CRMEntity {
 					if (isset($resultrow[$fieldkey])) {
 						$fieldvalue = $resultrow[$fieldkey];
 					}
+
+					// load picklist value with umlatus with explict decoding
+					// required for field-value strict check during save.
+					if ($fieldinfo["uitype"] == 15 || $fieldinfo["uitype"] == 16) {
+						$fieldvalue = decode_html($fieldvalue);
+					}
+
 					$this->column_fields[$fieldinfo['fieldname']] = $fieldvalue;
 				}
 			}
@@ -957,7 +977,7 @@ class CRMEntity {
         foreach($tagsList as $tag) {
             $tags[] = $tag->getName();
         }
-        $this->column_fields['tags'] = (count($tags) > 0) ? implode(',',$tags) : '';
+        $this->column_fields['tags'] = (php7_count($tags) > 0) ? implode(',',$tags) : '';
 
 		$this->column_fields['record_id'] = $record;
         $this->id = $record;
@@ -974,7 +994,7 @@ class CRMEntity {
 
 		//Event triggering code
 		require_once("include/events/include.inc");
-
+		$em = null;
 		//In Bulk mode stop triggering events
 		if(!self::isBulkSaveMode()) {
 			$em = new VTEventsManager($adb);
@@ -1377,7 +1397,7 @@ class CRMEntity {
 				for ($k = 0; $k < $numOfRelRecords; $k++) {
 					$recordIdsList[] = $this->db->query_result($relResult, $k, $focusObj->table_index);
 				}
-				if(count($recordIdsList) > 0) {
+				if(php7_count($recordIdsList) > 0) {
 					$params = array($id, RB_RECORD_UPDATED, $tableName, $columnName, $focusObj->table_index, implode(",", $recordIdsList));
 					$this->db->pquery('INSERT INTO vtiger_relatedlists_rb VALUES (?,?,?,?,?,?)', $params);
 				}
@@ -1503,11 +1523,11 @@ class CRMEntity {
 				" WHERE (fieldname not like '%\_id' OR fieldname in ('assigned_user_id'))" .
 				" AND tabid in (" . generateQuestionMarks($tabid) . ") and vtiger_field.presence in (0,2)";
 		$params = array($tabid);
-		if (count($exclude_columns) > 0) {
+		if (php7_count($exclude_columns) > 0) {
 			$sql .= " AND columnname NOT IN (" . generateQuestionMarks($exclude_columns) . ")";
 			array_push($params, $exclude_columns);
 		}
-		if (count($exclude_uitypes) > 0) {
+		if (php7_count($exclude_uitypes) > 0) {
 			$sql .= " AND uitype NOT IN (" . generateQuestionMarks($exclude_uitypes) . ")";
 			array_push($params, $exclude_uitypes);
 		}
@@ -2028,7 +2048,7 @@ class CRMEntity {
 	 */
 	function transferRelatedRecords($module, $transferEntityIds, $entityId) {
 		global $adb, $log;
-		$log->debug("Entering function transferRelatedRecords ($module, $transferEntityIds, $entityId)");
+		$log->debug("Entering function transferRelatedRecords ($module, ".implode(',',$transferEntityIds).", $entityId)");
 		foreach ($transferEntityIds as $transferId) {
 
 			// Pick the records related to the entity to be transfered, but do not pick the once which are already related to the current entity.
@@ -2393,7 +2413,7 @@ class CRMEntity {
 							where vtiger_role.parentrole like '" . $current_user_parent_role_seq . "::%') or vtiger_crmentity.smownerid
 					in(select shareduserid from vtiger_tmp_read_user_sharing_per
 						where userid=" . $current_user->id . " and tabid=" . $tabid . ") or (";
-			if (sizeof($current_user_groups) > 0) {
+			if (php7_sizeof($current_user_groups) > 0) {
 				$sec_query .= " vtiger_crmentity.smownerid in (" . implode(",", $current_user_groups) . ") or ";
 			}
 			$sec_query .= " vtiger_crmentity.smownerid in(select vtiger_tmp_read_group_sharing_per.sharedgroupid
@@ -2417,7 +2437,7 @@ class CRMEntity {
 			$fields[] = $value;
 		}
 		$pritablename = $tables[0];
-		$sectablename = $tables[1];
+		$sectablename = isset($tables[1]) ? $tables[1] : '';
 		$prifieldname = $fields[0][0];
 		$secfieldname = $fields[0][1];
 		$tmpname = $pritablename . 'tmp' . $secmodule;
@@ -2446,7 +2466,7 @@ class CRMEntity {
 				//remove the primary key since it will conflict with base table column name or else creating temporary table will fails for duplicate columns
 				//eg : vtiger_potential has potentialid and vtiger_potentialscf has same potentialid
 				unset($columns[array_search($modulecfindex,$columns)]);
-				if(count($columns) > 0) {
+				if(php7_count($columns) > 0) {
 					$cfSelectString = implode(',',$columns);
 					$selectColumns .= ','.$cfSelectString;
 				}
@@ -2457,7 +2477,7 @@ class CRMEntity {
 
 		$secQuery = 'SELECT '.$selectColumns.' '.$secQueryFrom;
 
-		$secQueryTempTableQuery = $queryPlanner->registerTempTable($secQuery, array($column_name, $fields[1], $prifieldname),$secmodule);
+		$secQueryTempTableQuery = $queryPlanner->registerTempTable($secQuery, array($column_name, isset($fields[1]) ? $fields[1] : '', $prifieldname),$secmodule);
 
 		$query = '';
 		if ($pritablename == 'vtiger_crmentityrel') {
@@ -2704,7 +2724,7 @@ class CRMEntity {
 		if (!empty($lookupcolumns) && $value !== false) {
 			$query .=" WHERE ";
 			$i = 0;
-			$columnCount = count($lookupcolumns);
+			$columnCount = php7_count($lookupcolumns);
 			foreach ($lookupcolumns as $columnname) {
 				if (!empty($columnname)) {
 					if ($i == 0 || $i == ($columnCount))
@@ -2763,7 +2783,7 @@ class CRMEntity {
 				"vtiger_user2role INNER JOIN vtiger_users ON vtiger_users.id=vtiger_user2role.userid " .
 				"INNER JOIN vtiger_role ON vtiger_role.roleid=vtiger_user2role.roleid WHERE " .
 				"vtiger_role.parentrole like '$parentRole::%')";
-		if (count($userGroups) > 0) {
+		if (php7_count($userGroups) > 0) {
 			$query .= $this->getNonAdminUserGroupAccessQuery($userGroups);
 		}
 		return $query;
@@ -2774,7 +2794,7 @@ class CRMEntity {
 	 * @param <type> $userGroups
 	 */
 	function getNonAdminUserGroupAccessQuery($userGroups) {
-		$query .= " UNION (SELECT groupid FROM vtiger_groups WHERE groupid IN (".implode(",", $userGroups)."))";
+		$query = " UNION (SELECT groupid FROM vtiger_groups WHERE groupid IN (".implode(",", $userGroups)."))";
 		return $query;
 	}
 
@@ -2787,11 +2807,11 @@ class CRMEntity {
 		require('user_privileges/sharing_privileges_' . $user->id . '.php');
 		$tabId = getTabid($module);
 		$sharingRuleInfoVariable = $module . '_share_read_permission';
-		$sharingRuleInfo = $$sharingRuleInfoVariable;
+		$sharingRuleInfo = isset($$sharingRuleInfoVariable) ? $$sharingRuleInfoVariable : array();
 		$sharedTabId = null;
 		$query = '';
-		if (!empty($sharingRuleInfo) && (count($sharingRuleInfo['ROLE']) > 0 ||
-				count($sharingRuleInfo['GROUP']) > 0)) {
+		if (!empty($sharingRuleInfo) && (php7_count($sharingRuleInfo['ROLE']) > 0 ||
+				php7_count($sharingRuleInfo['GROUP']) > 0)) {
 			$query = " (SELECT shareduserid FROM vtiger_tmp_read_user_sharing_per " .
 					"WHERE userid=$user->id AND tabid=$tabId) UNION (SELECT " .
 					"vtiger_tmp_read_group_sharing_per.sharedgroupid FROM " .
@@ -2841,8 +2861,8 @@ class CRMEntity {
 			$sharingRuleInfoVariable = $module . '_share_read_permission';
 			$sharingRuleInfo = $$sharingRuleInfoVariable;
 			$sharedTabId = null;
-			if (!empty($sharingRuleInfo) && (count($sharingRuleInfo['ROLE']) > 0 ||
-					count($sharingRuleInfo['GROUP']) > 0)) {
+			if (!empty($sharingRuleInfo) && (php7_count($sharingRuleInfo['ROLE']) > 0 ||
+					php7_count($sharingRuleInfo['GROUP']) > 0)) {
 				$tableName = $tableName . '_t' . $tabId;
 				$sharedTabId = $tabId;
 			} elseif ($module == 'Calendar' || !empty($scope)) {
@@ -2959,11 +2979,11 @@ class CRMEntity {
 		$list_buttons = Array();
 
 		if (isPermitted($currentModule, 'Delete', '') == 'yes')
-			$list_buttons['del'] = $app_strings[LBL_MASS_DELETE];
+			$list_buttons['del'] = $app_strings["LBL_MASS_DELETE"];
 		if (isPermitted($currentModule, 'EditView', '') == 'yes') {
-			$list_buttons['mass_edit'] = $app_strings[LBL_MASS_EDIT];
+			$list_buttons['mass_edit'] = $app_strings["LBL_MASS_EDIT"];
 			// Mass Edit could be used to change the owner as well!
-			//$list_buttons['c_owner'] = $app_strings[LBL_CHANGE_OWNER];
+			//$list_buttons['c_owner'] = $app_strings["LBL_CHANGE_OWNER"];
 		}
 		return $list_buttons;
 	}
@@ -2993,9 +3013,11 @@ class CRMEntity {
 	 * @param <String> $selectedColumns
 	 * @param <Boolean> $ignoreEmpty
 	 * @param <Array> $requiredTables
+	 * @param <Array> $columnTypes
 	 * @return string
 	 */
-	function getQueryForDuplicates($module, $tableColumns, $selectedColumns = '', $ignoreEmpty = false,$requiredTables = array()) {
+	function getQueryForDuplicates($module, $tableColumns, $selectedColumns = '', $ignoreEmpty = false,$requiredTables = array(),$columnTypes = null) {
+		$query='';
 		if(is_array($tableColumns)) {
 			$tableColumnsString = implode(',', $tableColumns);
 		}
@@ -3025,7 +3047,11 @@ class CRMEntity {
 
 		if($ignoreEmpty) {
 			foreach($tableColumns as $tableColumn){
-				$whereClause .= " AND ($tableColumn IS NOT NULL AND $tableColumn != '') ";
+				if ($columnTypes && ($columnTypes[$tableColumn] == "date" || $columnTypes[$tableColumn] == "datetime")) {
+					$whereClause .= " AND ($tableColumn IS NOT NULL) ";	
+				} else {
+					$whereClause .= " AND ($tableColumn IS NOT NULL AND $tableColumn != '') ";
+				}
 			}
 		}
 
@@ -3042,10 +3068,11 @@ class CRMEntity {
 		}
 
 		$i = 1;
+		$duplicateCheckClause='';
 		foreach($tableColumns as $tableColumn){
 			$tableInfo = explode('.', $tableColumn);
 			$duplicateCheckClause .= " ifnull($tableColumn,'null') = ifnull(temp.$tableInfo[1],'null')";
-			if (count($tableColumns) != $i++) $duplicateCheckClause .= " AND ";
+			if (php7_count($tableColumns) != $i++) $duplicateCheckClause .= " AND ";
 		}
 
 		$query = $selectClause . $fromClause .
@@ -3106,6 +3133,7 @@ class CRMEntity {
 	}
 }
 
+#[\AllowDynamicProperties]
 class TrackableObject implements ArrayAccess, IteratorAggregate {
 	private $storage;
 	private $trackingEnabled = true;
@@ -3115,11 +3143,14 @@ class TrackableObject implements ArrayAccess, IteratorAggregate {
 		$this->storage = $value;
 	}
 
+	#[\ReturnTypeWillChange]
 	function offsetExists($key) {
-		return isset($this->storage[$key]);
+		return isset($this->storage[$key]) || array_key_exists($key, $this->storage);
 	}
 
+	#[\ReturnTypeWillChange]
 	function offsetSet($key, $value) {
+		if(is_array($value)) $value = empty($value) ? "" : (array_key_exists(0, $value) ? $value[0] : ""); //it is an associative (if array without a key 0) modified to prevent warning of Undefined array key 0 .
 		if($this->tracking && $this->trackingEnabled) {
 			$olderValue = $this->offsetGet($key);
 			// decode_html only expects string
@@ -3132,14 +3163,17 @@ class TrackableObject implements ArrayAccess, IteratorAggregate {
 		$this->storage[$key] = $value;
 	}
 
+	#[\ReturnTypeWillChange]
 	public function offsetUnset($key) {
 		unset($this->storage[$key]);
 	}
 
+	#[\ReturnTypeWillChange]
 	public function offsetGet($key) {
-		return isset($this->storage[$key]) ? $this->storage[$key] : null;
+		return isset($this->storage[$key]) || array_key_exists($key, $this->storage) ? $this->storage[$key] : null;
 	}
 
+	#[\ReturnTypeWillChange]
 	public function getIterator() {
 		$iterator = new ArrayObject($this->storage);
 		return $iterator->getIterator();

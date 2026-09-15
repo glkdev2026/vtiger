@@ -261,7 +261,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 				}
 			} else {
 				if (!empty($mergeType) && $mergeType != Import_Utils_Helper::$AUTO_MERGE_NONE) {
-					if (count($this->mergeFields) == 0) {
+					if (php7_count($this->mergeFields) == 0) {
 						$mergeType = Import_Utils_Helper::$AUTO_MERGE_IGNORE;
 					}
 					$index = 0;
@@ -281,7 +281,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 												} else {
 													$referenceFileValueComponents = explode(':::', $comparisonValue);
 												}
-												if (count($referenceFileValueComponents) > 1) {
+												if (php7_count($referenceFileValueComponents) > 1) {
 													$comparisonValue = trim($referenceFileValueComponents[1]);
 												}
 												break;
@@ -390,13 +390,11 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 						$entityInfo = null;
 					} else {
 						try {
-							// to save Source of Record while Creating
-							$fieldData['source'] = $this->recordSource;
-							$entityInfo = $this->importRecord($fieldData, 'create');
-							if ($entityInfo) {
-								$entityIdComponents = vtws_getIdComponents($entityInfo['id']);
-								$createdRecords[] = $entityIdComponents[1];
-							}
+                                                    $entityInfo = $this->importRecord($fieldData, 'create');
+                                                    if ($entityInfo) {
+                                                            $entityIdComponents = vtws_getIdComponents($entityInfo['id']);
+                                                            $createdRecords[] = $entityIdComponents[1];
+                                                    }
 						} catch (Exception $e) {
 
 						}
@@ -410,7 +408,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 			}
 			if ($createRecord || $mergeType == Import_Utils_Helper::$AUTO_MERGE_MERGEFIELDS || $mergeType == Import_Utils_Helper::$AUTO_MERGE_OVERWRITE) {
 				$entityIdComponents = vtws_getIdComponents($entityInfo['id']);
-				$recordId = $entityIdComponents[1];
+				$recordId = isset($entityIdComponents[1]) ? $entityIdComponents[1] : '';
 				if (!empty($recordId)) {
 					$entityfields = getEntityFieldNames($this->module);
 					switch ($this->module) {
@@ -435,7 +433,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 					$this->entityData[] = VTEntityData::fromCRMEntity($focus);
 				}
 
-				$label = trim($label);
+				$label = isset($label) ? trim($label) : '';
 				$adb->pquery('UPDATE vtiger_crmentity SET label=? WHERE crmid=?', array($label, $recordId));
 				//Creating entity data of updated records for post save events
 				if (in_array($entityInfo['status'], array(self::$IMPORT_RECORD_MERGED, self::$IMPORT_RECORD_UPDATED))) {
@@ -487,6 +485,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 			if(!array_key_exists('visibility', $fieldData)){
 				$fieldData['visibility'] = $current_user->calendarsharedtype;
 			}
+			$fieldData['source'] = $this->recordSource;
 			foreach ($eventModuleFields as $fieldName => $fieldModel) {
 				if (stripos($fieldName, 'cf_') !== false) {
 					$moduleFields[$fieldName] = $fieldModel;
@@ -555,9 +554,9 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 					} else {
 						$fieldValueDetails = $fieldValue;
 					}
-					if (count($fieldValueDetails) > 1) {
+					if (is_array($fieldValueDetails) && php7_count($fieldValueDetails) > 1) {
 						$referenceModuleName = trim($fieldValueDetails[0]);
-						if (count($fieldValueDetails) == 2) {
+						if (php7_count($fieldValueDetails) == 2) {
 							$entityLabel = trim($fieldValueDetails[1]);
 							$entityId = getEntityId($referenceModuleName, decode_html($entityLabel));
 						} else {//multi reference field
@@ -633,7 +632,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 
 				$picklistValueInLowerCase = strtolower($fieldValue);
 				$allPicklistValuesInLowerCase = array_map('strtolower', $allPicklistValues);
-				if (sizeof($allPicklistValuesInLowerCase) > 0 && sizeof($allPicklistValues) > 0) {
+				if (php7_sizeof($allPicklistValuesInLowerCase) > 0 && php7_sizeof($allPicklistValues) > 0) {
 					$picklistDetails = array_combine($allPicklistValuesInLowerCase, $allPicklistValues);
 				}
 
@@ -653,7 +652,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 						unset($this->allPicklistValues[$fieldName]);
 					}
 				} else {
-					$fieldData[$fieldName] = $picklistDetails[$picklistValueInLowerCase];
+					$fieldData[$fieldName] = isset($picklistDetails[$picklistValueInLowerCase]) ? $picklistDetails[$picklistValueInLowerCase] : null;
 				}
 			} else if ($fieldDataType == 'currency') {
 				// While exporting we are exporting as user format, we should import as db format while importing
@@ -685,7 +684,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 						$fieldValue = '';
 					} 
 					$valuesList = explode(' ', $fieldValue);
-					if(count($valuesList) == 1) $fieldValue = '';
+					if(php7_count($valuesList) == 1) $fieldValue = '';
 					$fieldValue = getValidDBInsertDateTimeValue($fieldValue);
 					if (preg_match("/^[0-9]{2,4}[-][0-1]{1,2}?[0-9]{1,2}[-][0-3]{1,2}?[0-9]{1,2} ([0-1][0-9]|[2][0-3])([:][0-5][0-9]){1,2}$/",
 							$fieldValue) == 0) {
@@ -705,7 +704,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 					}
 
 					$valuesList = explode(' ', $fieldValue);
-					if (count($valuesList) > 1) {
+					if (php7_count($valuesList) > 1) {
 						$fieldValue = $valuesList[0];
 					}
 
@@ -767,10 +766,14 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 				$_REQUEST['cur_'.$this->lineitem_currency_id.'_check'] = 1;
 			}
 			$fieldData['currency_id'] = $this->lineitem_currency_id;
+                        
+                        
 		}
+		// to save Source of Record while Creating
+		$fieldData['source'] = $this->recordSource;
 		if ($fieldData != null && $checkMandatoryFieldValues) {
 			foreach ($moduleFields as $fieldName => $fieldInstance) {
-				if ((($fieldData[$fieldName] == '') || ($fieldData[$fieldName] == null)) && $fieldInstance->isMandatory()) {
+				if ((empty($fieldData[$fieldName]) || !isset($fieldData[$fieldName])) && $fieldInstance->isMandatory()) {
 					return null;
 				}
 			}
@@ -1049,7 +1052,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 				unset($_REQUEST['contactidlist']);
 				if ($recordData['contact_id']) {
 					$contactIdsList = explode(', ', $recordData['contact_id']);
-					if (count($contactIdsList) > 1) {
+					if (php7_count($contactIdsList) > 1) {
 						$_REQUEST['contactidlist'] = implode(';', $contactIdsList);
 					}
 				}
@@ -1078,7 +1081,7 @@ class Import_Data_Action extends Vtiger_Action_Controller {
 
 						$fieldValueInLowerCase = strtolower($fieldValue);
 						$picklistValuesInLowerCase = array_map('strtolower', $picklistValues);
-						if (sizeof($picklistValuesInLowerCase)&& sizeof($picklistValues)) {
+						if (php7_sizeof($picklistValuesInLowerCase)&& php7_sizeof($picklistValues)) {
 							$picklistDetails = array_combine($picklistValuesInLowerCase, $picklistValues);
 						}
 

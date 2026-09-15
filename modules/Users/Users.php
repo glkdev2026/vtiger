@@ -123,6 +123,8 @@ class Users extends CRMEntity {
 	var $record_id;
 	var $new_schema = true;
 
+	public $moduleName;
+
 	var $DEFAULT_PASSWORD_CRYPT_TYPE; //'BLOWFISH', /* before PHP5.3*/ MD5;
 
 	//Default Widgests
@@ -393,7 +395,7 @@ class Users extends CRMEntity {
 
 		// Get the fields for the user
 		$query = "SELECT * from $this->table_name where user_name=?";
-		$result = $this->db->requireSingleResult($query, array($usr_name), false);
+		$result = $this->db->requirePsSingleResult($query, array($usr_name), false);
 
 		$row = $this->db->fetchByAssoc($result);
 		$this->column_fields = $row;
@@ -582,7 +584,7 @@ class Users extends CRMEntity {
 		$result =$this->db->pquery($query, array(), true, "Error selecting possible duplicate vtiger_users: ");
 		$last_admin = $this->db->fetchByAssoc($result);
 
-		$this->log->debug("last admin length: ".count($last_admin));
+		$this->log->debug("last admin length: ".php7_count($last_admin));
 		$this->log->debug($last_admin['user_name']." == ".$usr_name);
 
 		$verified = true;
@@ -591,9 +593,9 @@ class Users extends CRMEntity {
 			$verified = false;
 		}
 		if(!isset($_REQUEST['is_admin']) &&
-				count($last_admin) == 1 &&
+				php7_count($last_admin) == 1 &&
 				$last_admin['user_name'] == $usr_name) {
-			$this->log->debug("last admin length: ".count($last_admin));
+			$this->log->debug("last admin length: ".php7_count($last_admin));
 
 			$this->error_string .= $mod_strings['ERR_LAST_ADMIN_1'].$usr_name.$mod_strings['ERR_LAST_ADMIN_2'];
 			$verified = false;
@@ -751,7 +753,7 @@ class Users extends CRMEntity {
 	function insertIntoEntityTable($table_name, $module, $fileid='') {
 		global $log;
 		$log->info("function insertIntoEntityTable ".$module.' vtiger_table name ' .$table_name);
-		global $adb, $current_user;
+		global $adb, $current_user, $app_strings;
 		$insertion_mode = $this->mode;
 		//Checkin whether an entry is already is present in the vtiger_table to update
 		if($insertion_mode == 'edit') {
@@ -779,7 +781,7 @@ class Users extends CRMEntity {
 			}
 			$userlabel = trim(decode_html($userlabel));
 			
-			$this->column_fields['userlabel'] = strip_tags($userlabel);
+			$this->column_fields['userlabel'] = vtlib_strip_quoted(strip_tags($userlabel));
 		}
 
 		if($insertion_mode == 'edit') {
@@ -824,7 +826,7 @@ class Users extends CRMEntity {
 					}
 
 				}elseif($uitype == 15) {
-					if($this->column_fields[$fieldname] == $app_strings['LBL_NOT_ACCESSIBLE']) {
+					if($app_strings && $this->column_fields[$fieldname] == $app_strings['LBL_NOT_ACCESSIBLE']) {
 						//If the value in the request is Not Accessible for a picklist, the existing value will be replaced instead of Not Accessible value.
 						$sql="select $columname from  $table_name where ".$this->tab_name_index[$table_name]."=?";
 						$res = $adb->pquery($sql,array($this->id));
@@ -873,7 +875,7 @@ class Users extends CRMEntity {
 						$fldvalue = $themeList[0];
 					}
 				}
-				if($current_user->id == $this->id) {
+				if($current_user && $current_user->id == $this->id) {
 					$_SESSION['vtiger_authenticated_user_theme'] = $fldvalue;
 				}
 			} elseif($uitype == 32 && $fieldname == 'language') {
@@ -887,7 +889,7 @@ class Users extends CRMEntity {
 						$fldvalue = $languageList[0];
 					}
 				}
-				if($current_user->id == $this->id) {
+				if($current_user && $current_user->id == $this->id) {
 					$_SESSION['authenticated_user_language'] = $fldvalue;
 				}
 			}
@@ -994,7 +996,8 @@ class Users extends CRMEntity {
 			$currency_result = $adb->pquery($currency_query, array());
 		}
 		$currency_array = array("$"=>"&#36;","&euro;"=>"&#8364;","&pound;"=>"&#163;","&yen;"=>"&#165;");
-		$ui_curr = $currency_array[$adb->query_result($currency_result,0,"currency_symbol")];
+		$currency_symbol = $adb->query_result($currency_result,0,"currency_symbol");
+		$ui_curr = isset($currency_array[$currency_symbol])? $currency_array[$currency_symbol] : "";
 		if($ui_curr == "")
 			$ui_curr = $adb->query_result($currency_result,0,"currency_symbol");
 		$this->column_fields["currency_name"]= $this->currency_name = $adb->query_result($currency_result,0,"currency_name");
@@ -1003,17 +1006,6 @@ class Users extends CRMEntity {
 		$this->column_fields["conv_rate"]= $this->conv_rate = $adb->query_result($currency_result,0,"conversion_rate");
 		if($this->column_fields['no_of_currency_decimals'] == '')
 			$this->column_fields['no_of_currency_decimals'] = $this->no_of_currency_decimals = getCurrencyDecimalPlaces();
-
-		// TODO - This needs to be cleaned up once default values for fields are picked up in a cleaner way.
-		// This is just a quick fix to ensure things doesn't start breaking when the user currency configuration is missing
-		if($this->column_fields['currency_grouping_pattern'] == ''
-				&& $this->column_fields['currency_symbol_placement'] == '') {
-
-			$this->column_fields['currency_grouping_pattern'] = $this->currency_grouping_pattern = '123,456,789';
-			$this->column_fields['currency_decimal_separator'] = $this->currency_decimal_separator = '.';
-			$this->column_fields['currency_grouping_separator'] = $this->currency_grouping_separator = ',';
-			$this->column_fields['currency_symbol_placement'] = $this->currency_symbol_placement = '$1.0';
-		}
 
 		// TODO - This needs to be cleaned up once default values for fields are picked up in a cleaner way.
 		// This is just a quick fix to ensure things doesn't start breaking when the user currency configuration is missing
@@ -1052,12 +1044,12 @@ class Users extends CRMEntity {
 		if(!isset($ownerid) || $ownerid=='')
 			$ownerid = $current_user->id;
 
-		$save_file = 'true';
+		$save_file =  true;
 		//only images are allowed for these modules
 		if($module == 'Users') {
 			$save_file = validateImageFile($file_details);
 		}
-		if ($save_file == 'false') {
+		if (!$save_file) {
 			return;
 		}
 
@@ -1077,7 +1069,7 @@ class Users extends CRMEntity {
         $encryptFileName = Vtiger_Util_Helper::getEncryptedFileName($binFile);
 		$upload_status = move_uploaded_file($filetmp_name,$upload_file_path.$current_id."_".$encryptFileName);
 
-		if($save_file == 'true') {
+		if($save_file) {
 
 			$sql1 = "insert into vtiger_crmentity (crmid,smcreatorid,smownerid,setype,description,createdtime,modifiedtime) values(?,?,?,?,?,?,?)";
 			$params1 = array($current_id, $current_user->id, $ownerid, $module." Image", $this->column_fields['description'], $this->db->formatString("vtiger_crmentity","createdtime",$date_var), $this->db->formatDate($date_var, true));
@@ -1128,7 +1120,7 @@ class Users extends CRMEntity {
 		// Added for Reminder Popup support
 		$this->resetReminderInterval($prev_reminder_interval);
 		//Creating the Privileges Flat File
-		if(isset($this->column_fields['roleid'])) {
+		if(isset($this->column_fields['roleid']) && !empty($this->column_fields['roleid'])) {
 			updateUser2RoleMapping($this->column_fields['roleid'],$this->id);
 		}
 
@@ -1161,7 +1153,7 @@ class Users extends CRMEntity {
 			for($q=0;$q<$adb->num_rows($res);$q++) {
 				$homeorder[]=$adb->query_result($res,$q,"hometype");
 			}
-			for($i = 0;$i < count($this->homeorder_array);$i++) {
+			for($i = 0;$i < php7_count($this->homeorder_array);$i++) {
 				if(in_array($this->homeorder_array[$i],$homeorder)) {
 					$return_array[$this->homeorder_array[$i]] = $this->homeorder_array[$i];
 				}else {
@@ -1169,7 +1161,7 @@ class Users extends CRMEntity {
 				}
 			}
 		}else {
-			for($i = 0;$i < count($this->homeorder_array);$i++) {
+			for($i = 0;$i < php7_count($this->homeorder_array);$i++) {
 			  if(in_array($this->homeorder_array[$i], $this->default_widgets)){
 				$return_array[$this->homeorder_array[$i]] = $this->homeorder_array[$i];
 			  }else{
@@ -1183,7 +1175,7 @@ class Users extends CRMEntity {
 	function getDefaultHomeModuleVisibility($home_string,$inVal) {
 		$homeModComptVisibility= 1;
 		if($inVal == 'postinstall') {
-			if($_REQUEST[$home_string] != '') {
+			if(isset($_REQUEST[$home_string]) && $_REQUEST[$home_string] != '') {
 				$homeModComptVisibility = 0;
 			} else if(in_array($home_string, $this->default_widgets)){
 				$homeModComptVisibility = 0;
@@ -1325,11 +1317,12 @@ class Users extends CRMEntity {
 		global $log,$adb;
 		$log->debug("Entering in function saveHomeOrder($id)");
 
+		$save_array = array();
 		 if($this->mode == 'edit')
 		 {
-			 for($i = 0;$i < count($this->homeorder_array);$i++)
+			 for($i = 0;$i < php7_count($this->homeorder_array);$i++)
 			 {
-				 if($_REQUEST[$this->homeorder_array[$i]] != '')
+				 if(isset($_REQUEST[$this->homeorder_array[$i]]) && $_REQUEST[$this->homeorder_array[$i]] != '')
 				 {
 					$save_array[] = $this->homeorder_array[$i];
 					$qry=" update vtiger_homestuff,vtiger_homedefault set vtiger_homestuff.visible=0 where vtiger_homestuff.stuffid=vtiger_homedefault.stuffid and vtiger_homestuff.userid=? and vtiger_homedefault.hometype=?";//To show the default Homestuff on the the Home Page
@@ -1341,7 +1334,7 @@ class Users extends CRMEntity {
 					$result=$adb->pquery($qry, array($id, $this->homeorder_array[$i]));
 				}
 			}
-			if($save_array !="")
+			if($save_array)
 				$homeorder = implode(',',$save_array);
 		}
 		 else
@@ -1581,24 +1574,6 @@ class Users extends CRMEntity {
 		}
 	}
 
-	/**
-	* Function to update Config file
-	* @param- $_REQUEST array
-	*/
-	public function updateConfigFile($requestArray) {
-	   if (isset ($requestArray['currency_name'])) {
-		   $currency_name = vtlib_purify($requestArray['currency_name']);
-		   $currency_name = '$currency_name = \''.$currency_name.'\'';
-
-		   //Updating in config inc file
-		   $filename = 'config.inc.php';
-		   if (file_exists($filename)) {
-			   $contents = file_get_contents($filename);
-			   $contents = str_replace('$currency_name = \'USA, Dollars\'', $currency_name, $contents);
-			   file_put_contents($filename, $contents);
-		   }
-	   }
-   }
 
    public function triggerAfterSaveEventHandlers() {
 	   global $adb;
@@ -1752,7 +1727,7 @@ class Users extends CRMEntity {
 			foreach($fieldInstances as $blockInstance) {
 				foreach($blockInstance as $fieldInstance) {
 					$fieldName = $fieldInstance->getName();
-					$fieldValue = $data[$fieldName];
+					$fieldValue = isset($data[$fieldName]) ? $data[$fieldName] : '';
 					$dataType = $fieldInstance->getFieldDataType();
 					if($fieldInstance->isMandatory()) {
 						$mandatoryFields[] = $fieldName;
@@ -1794,7 +1769,7 @@ class Users extends CRMEntity {
 							unset($currencyId);
 					} else if($fieldName == 'language') {
 						foreach($allLanguages as $langKey => $langName) {
-							if(strtolower($fieldValue) == strtolower($langKey) || strtolower($fieldValue) == strtolower($langName)) {
+							if(strtolower($fieldValue ? $fieldValue : "") == strtolower($langKey ? $langKey : "") || strtolower($fieldValue ? $fieldValue : "") == strtolower($langName ? $langName : "")) {
 								$lang = $langKey;
 								break;
 							}
@@ -1808,8 +1783,8 @@ class Users extends CRMEntity {
 						$allUsers = Users_Record_Model::getAll();
 						$reportsTo = null;
 						foreach($allUsers as $user) {
-							$userName = strtolower($user->get('user_name'));
-							$firstLastName = strtolower($user->get('userlabel'));
+							$userName = strtolower($user->get('user_name') ? $user->get('user_name') : "");
+							$firstLastName = strtolower($user->get('userlabel') ? $user->get('userlabel') : "");
 							if(strtolower($fieldValue) == $userName || strtolower($fieldValue) == $firstLastName) {
 								$reportsTo = $user->getId();
 								break;
@@ -1822,7 +1797,7 @@ class Users extends CRMEntity {
 						$picklistValues = $fieldInstance->getPicklistValues();
 						$emptyValuedPicklistFields = array('defaulteventstatus', 'defaultactivitytype', 'reminder_interval');
 						foreach($picklistValues as $picklistKey => $picklistValue) {
-							if(strtolower($fieldValue) == strtolower($picklistKey) || strtolower($fieldValue) == strtolower($picklistValue)) {
+							if(strtolower($fieldValue) == strtolower($picklistKey) || strtolower($fieldValue) == strtolower($picklistValue ? $picklistValue : "")) {
 								$selectedValue = $picklistKey;
 								break;
 							}
@@ -1870,7 +1845,7 @@ class Users extends CRMEntity {
 				$modelData = $recordModel->getData();
 				$recordModel->set('mode', '');
 				foreach($modelData as $fieldName => $fieldValue) {
-					$recordModel->set($fieldName, $record[$fieldName]);
+					$recordModel->set($fieldName, isset($record[$fieldName]) ? $record[$fieldName] : null);
 				}
 				$recordModel->save();
 				$plainPasswords[$recordModel->getId()] = $record['user_password'];

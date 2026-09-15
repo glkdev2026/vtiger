@@ -18,7 +18,8 @@ class VTWS_PreserveGlobal{
 		//To not push null value . Ideally we should not push null value for any name
 		//But current user null is dangerous so we are checking for only current user
         if(!empty(${$name}) || $name != 'current_user') {
-			if(!is_array(VTWS_PreserveGlobal::$globalData[$name])){
+			if(!isset(VTWS_PreserveGlobal::$globalData[$name]) ||
+				!is_array(VTWS_PreserveGlobal::$globalData[$name])){
 				VTWS_PreserveGlobal::$globalData[$name] = array();		
 			}
 			
@@ -33,7 +34,7 @@ class VTWS_PreserveGlobal{
 		//$name store the name of the global.
 		global ${$name};
 		
-		if(is_array(VTWS_PreserveGlobal::$globalData[$name]) && count(VTWS_PreserveGlobal::$globalData[$name]) > 0){
+		if(is_array(VTWS_PreserveGlobal::$globalData[$name]) && php7_count(VTWS_PreserveGlobal::$globalData[$name]) > 0){
 			${$name} = array_pop(VTWS_PreserveGlobal::$globalData[$name]);
 		}
 		${$name};
@@ -48,7 +49,7 @@ class VTWS_PreserveGlobal{
 		foreach (VTWS_PreserveGlobal::$globalData as $name => $detail) {
 			//$name store the name of the global.
 			global ${$name};
-			if(is_array(VTWS_PreserveGlobal::$globalData[$name]) && count(VTWS_PreserveGlobal::$globalData[$name]) > 0) {
+			if(is_array(VTWS_PreserveGlobal::$globalData[$name]) && php7_count(VTWS_PreserveGlobal::$globalData[$name]) > 0) {
 				${$name} = array_pop(VTWS_PreserveGlobal::$globalData[$name]);
 			}
 		}

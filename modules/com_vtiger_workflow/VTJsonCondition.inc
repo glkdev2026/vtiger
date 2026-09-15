@@ -26,13 +26,13 @@ class VTJsonCondition {
 			$expressionResults = array();
 			$i = 0;
 			foreach ($expr as $cond) {
-				$conditionGroup = $cond['groupid'];
+				$conditionGroup = isset($cond['groupid']) ? $cond['groupid'] : null;
 				if (empty($conditionGroup)) {
 					$conditionGroup = 0;
 				}
 				preg_match('/(\w+) : \((\w+)\) (\w+)/', $cond['fieldname'], $matches);
-				if (count($matches) == 0) {
-					if ($cond['fieldname'] == '_VT_add_comment' && $cond['isEvaluated']) {
+				if (php7_count($matches) == 0) {
+					if (isset($cond['isEvaluated']) && $cond['fieldname'] == '_VT_add_comment' && $cond['isEvaluated']) {
 						$expressionResults[$conditionGroup][$i]['result'] = $cond['isEvaluated'];
 					} else {
 						$expressionResults[$conditionGroup][$i]['result'] = $this->checkCondition($entityData, $cond);
@@ -85,9 +85,9 @@ class VTJsonCondition {
 			foreach ($expressionResults as $groupId => $groupExprResultSet) {
 				$groupResult = TRUE;
 				foreach ($groupExprResultSet as $exprResult) {
-					$result = $exprResult['result'];
-					$logicalOperator = $exprResult['logicaloperator'];
-					if (isset($result)) { // Condition to skip last condition
+					if (isset($exprResult['result'])) { // Condition to skip last condition
+						$result = $exprResult['result'];
+						$logicalOperator = isset($exprResult['logicaloperator']) ? $exprResult['logicaloperator'] : null;
 						if (!empty($logicalOperator)) {
 							switch ($logicalOperator) {
 								case 'and' : $groupResult = ($groupResult && $result);
@@ -159,10 +159,10 @@ class VTJsonCondition {
 			}
 			$rawFieldValue = $fieldValue;
 		} else {
-			$fieldValue = $data[$cond['fieldname']];
+			$fieldValue = isset($data[$cond['fieldname']]) ? $data[$cond['fieldname']]:"";
 		}
 		$value = trim(html_entity_decode($cond['value']));
-		$expressionType = $cond['valuetype'];
+		$expressionType = isset($cond['valuetype']) ? $cond['valuetype'] : null;
 
 		if ($expressionType == 'fieldname') {
 			if ($referredEntityData != null) {
@@ -191,7 +191,7 @@ class VTJsonCondition {
 		global $current_user;
 		$handler = vtws_getModuleHandlerFromName($entityData->getModuleName(), $current_user);
 		$moduleFields = $handler->getMeta()->getModuleFields();
-		$fieldInstance = $moduleFields[$cond['fieldname']];
+		$fieldInstance = isset($moduleFields[$cond['fieldname']])?$moduleFields[$cond['fieldname']]:"";
 
 		if($fieldInstance && $fieldInstance->getFieldDataType() == 'datetime') {
 			//Convert the DB Date Time Format to User Date Time Format
@@ -199,7 +199,7 @@ class VTJsonCondition {
 			$date = new DateTimeField($fieldValue);
 			$fieldValue = $date->getDisplayDateTimeValue();
 			$valueArray = explode(' ', $value);
-			if(count($valueArray) == 1) {
+			if(php7_count($valueArray) == 1) {
 				$fieldValueArray = explode(' ', $fieldValue);
 				$fieldValue = getValidDBInsertDateValue($fieldValueArray[0]);
 			}
@@ -360,7 +360,7 @@ class VTJsonCondition {
 				}
 				return false;
 			case "is not empty":
-				if(empty($fieldValue)) {
+				if(empty($fieldValue) && $fieldValue!=0) {
 					return false;
 				}
 				return true;

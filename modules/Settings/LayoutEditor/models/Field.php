@@ -11,6 +11,7 @@
 
 class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model {
 
+    public $uitype_instance;
 	public function delete() {
 		$adb = PearDatabase::getInstance();
 		parent::delete();
@@ -26,7 +27,7 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model {
 		$fieldtype =  explode("~",$typeofdata);
 
 		$focus = CRMEntity::getInstance($fld_module);
-
+		$oldfieldlabel = isset($oldfieldlabel) ? $oldfieldlabel : '';
 		$deletecolumnname =$tablename .":". $columnname .":".$fieldname.":".$fld_module. "_" .str_replace(" ","_",$oldfieldlabel).":".$fieldtype[0];
 		$column_cvstdfilter = 	$tablename .":". $columnname .":".$fieldname.":".$fld_module. "_" .str_replace(" ","_",$oldfieldlabel);
 		$select_columnname = $tablename.":".$columnname .":".$fld_module. "_" . str_replace(" ","_",$oldfieldlabel).":".$fieldname.":".$fieldtype[0];
@@ -111,7 +112,7 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model {
 		}
 	}
 
-	public static function makeFieldActive($fieldIdsList=array(), $blockId, $moduleName = false) {
+	public static function makeFieldActive($fieldIdsList, $blockId, $moduleName = false) {
 		$db = PearDatabase::getInstance();
 		$maxSequenceQuery = "SELECT MAX(sequence) AS maxsequence FROM vtiger_field WHERE block = ? AND presence IN (0,2) ";
 		$res = $db->pquery($maxSequenceQuery,array($blockId));
@@ -437,9 +438,10 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model {
 	public function getDefaultFieldValueToViewInV7FieldsLayOut() {
 		$defaultValue = $this->getDefaultFieldValue();
 
-		if ($defaultValue) {
+		if (isset($defaultValue) && $defaultValue !== '') {
 			if ($this->getFieldDataType() == 'currency') {
-				$defaultValue = $this->getCurrencyDisplayValue($defaultValue, true);
+				//The argument for $skipformatting parameter is passed false to get value with user preference.
+				$defaultValue = $this->getCurrencyDisplayValue($defaultValue, false);
 			} else {
 				$defaultValue = $this->getDisplayValue($defaultValue);
 			}

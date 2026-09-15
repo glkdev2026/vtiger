@@ -41,7 +41,7 @@ class VTCreateEntityTask extends VTTask {
 			$fieldValueMapping = Zend_Json::decode($this->field_value_mapping);
 		}
 
-		if (!empty($entityType) && !empty($fieldValueMapping) && count($fieldValueMapping) > 0) {
+		if (!empty($entityType) && !empty($fieldValueMapping) && php7_count($fieldValueMapping) > 0) {
 			require_once('data/CRMEntity.php');
 
 			$newEntity = CRMEntity::getInstance($entityType);
@@ -73,9 +73,8 @@ class VTCreateEntityTask extends VTTask {
 				if ($fieldValueType == 'fieldname') {
 					$field = $fieldValue;
 					$module = $referenceModule;
-					if ($referenceModule == $entityType) {
-						$fieldValue = $newEntity->column_fields[$fieldValue];
-					} else if (count($matches) > 0) {
+					
+					if (php7_count($matches) > 0) {
 						$referenceField = $matches[1];
 						$referencedModule = $matches[2];
 						$referencedFieldName = $matches[3];
@@ -90,7 +89,7 @@ class VTCreateEntityTask extends VTTask {
 						$referenceFieldFocus = $this->getReferenceFieldFocus($referencedModule, $referenceField, $referenceRecordId);
 						$fieldValue = $referenceFieldFocus->column_fields[$referencedFieldName];
 					} else {
-						$fieldValue = decode_html($focus->column_fields[$fieldValue]);
+						$fieldValue = decode_html($focus->column_fields[$field]);
 					}
 
 					$moduleModel = Vtiger_Module_Model::getInstance($module);
@@ -104,10 +103,10 @@ class VTCreateEntityTask extends VTTask {
 							if (!empty($fieldValue)) {
 								if (!empty($fieldInstance)) {
 									$referenceList = $fieldInstance->getReferenceList();
-									if ((count($referenceList) == 1) && $referenceList[0] == "Users") {
+									if ((php7_count($referenceList) == 1) && $referenceList[0] == "Users") {
 										$userRecordLabels = Vtiger_Functions::getOwnerRecordLabels($fieldValue);
 										$fieldValue = $userRecordLabels[$fieldValue];
-									} elseif ((count($referenceList) == 1) && $referenceList[0] == "Currency") {
+									} elseif ((php7_count($referenceList) == 1) && $referenceList[0] == "Currency") {
 										$fieldValue = getCurrencyName($fieldValue);
 									} elseif ($fieldInstance->getFieldName() == "roleid") {
 										$fieldValue = getRoleName($fieldValue);

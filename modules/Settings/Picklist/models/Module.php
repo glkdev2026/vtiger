@@ -52,14 +52,15 @@ class Settings_Picklist_Module_Model extends Vtiger_Module_Model {
 			$result = $db->pquery($sql, array($pickListFieldName));
 			$picklistid = $db->query_result($result,0,"picklistid");
 			//add the picklist values to the selected roles
-			for($j=0;$j<count($rolesSelected);$j++){
+			for($j=0;$j<php7_count($rolesSelected);$j++){
 				$roleid = $rolesSelected[$j];
 				Vtiger_Cache::delete('PicklistRoleBasedValues',$pickListFieldName.$roleid);
 				$sql ="SELECT max(sortid)+1 as sortid
 					   FROM vtiger_role2picklist left join vtiger_$pickListFieldName
 						   on vtiger_$pickListFieldName.picklist_valueid=vtiger_role2picklist.picklistvalueid
 					   WHERE roleid=? and picklistid=?";
-				$sortid = $db->query_result($db->pquery($sql, array($roleid, $picklistid)),0,'sortid');
+				$result = $db->pquery($sql, array($roleid, $picklistid));
+				$sortid = $db->query_result($result,0,'sortid');
 
 				$sql = "insert into vtiger_role2picklist values(?,?,?,?)";
 				$db->pquery($sql, array($roleid, $picklist_valueid, $picklistid, $sortid));
@@ -375,6 +376,7 @@ class Settings_Picklist_Module_Model extends Vtiger_Module_Model {
 		}
 
 		$allLang = Vtiger_Language_Handler::getAllLanguages();
+		
 		foreach ($allLang as $langKey => $langName) {
 			$langDir = 'languages/' . $langKey . '/custom/';
 			if (!file_exists($langDir)) {
@@ -419,6 +421,7 @@ class Settings_Picklist_Module_Model extends Vtiger_Module_Model {
 				}
 				fwrite($fp, ");");
 			}
+			$jsLanguageStrings = array();
 			if ($jsLanguageStrings) {
 				fwrite($fp, "\n\$jsLanguageStrings = array(\n");
 				foreach ($jsLanguageStrings as $key => $value) {
@@ -498,8 +501,9 @@ class Settings_Picklist_Module_Model extends Vtiger_Module_Model {
 	public static function getPicklistColorMap($fieldName, $key = false) {
 		$db = PearDatabase::getInstance();
 		$primaryKey = Vtiger_Util_Helper::getPickListId($fieldName);
-		$colums = $db->getColumnNames("vtiger_$fieldName");
-		if(in_array('color',$colums)) {
+		$columns = $db->getColumnNames("vtiger_$fieldName");
+		$pickListColorMap = array();
+		if(is_array($columns) && in_array('color',$columns)) {
 			$query = 'SELECT '.$primaryKey.',color,'.$fieldName.' FROM vtiger_'.$fieldName;
 			$result = $db->pquery($query, array());
 			$pickListColorMap = array();
@@ -538,6 +542,7 @@ class Settings_Picklist_Module_Model extends Vtiger_Module_Model {
 	public static function getPicklistColorByValue($fieldName, $fieldValue) {
 		$db = PearDatabase::getInstance();
 		$tableName = "vtiger_$fieldName";
+		$color = '';
 		if(Vtiger_Utils::CheckTable($tableName)) {
 			$colums = $db->getColumnNames($tableName);
 			$fieldValue = decode_html($fieldValue);

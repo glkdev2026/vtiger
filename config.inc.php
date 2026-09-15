@@ -46,9 +46,9 @@ $HELPDESK_SUPPORT_EMAIL_REPLY_ID = $HELPDESK_SUPPORT_EMAIL_ID;
 
 $dbconfig['db_server'] = '127.0.0.1';
 $dbconfig['db_port'] = ':3306';
-$dbconfig['db_username'] = 'migration';
-$dbconfig['db_password'] = 'Vt2026#!';
-$dbconfig['db_name'] = 'vtiger';
+$dbconfig['db_username'] = 'migration_user';
+$dbconfig['db_password'] = 'Ruslan2027_!@';
+$dbconfig['db_name'] = 'migration_db';
 $dbconfig['db_type'] = 'mysqli';
 $dbconfig['db_status'] = 'true';
 
@@ -111,7 +111,7 @@ $allow_exports = 'all';
 
 // files with one of these extensions will have '.txt' appended to their filename on upload
 // upload_badext default value = php, php3, php4, php5, pl, cgi, py, asp, cfm, js, vbs, html, htm
-$upload_badext = array('php', 'php3', 'php4', 'php5', 'pl', 'cgi', 'py', 'asp', 'cfm', 'js', 'vbs', 'html', 'htm', 'exe', 'bin', 'bat', 'sh', 'dll', 'phps', 'phtml', 'xhtml', 'rb', 'msi', 'jsp', 'shtml', 'sth', 'shtm');
+$upload_badext = array('php', 'php3', 'php4', 'php5', 'pl', 'cgi', 'py', 'asp', 'cfm', 'js', 'vbs', 'html', 'htm', 'exe', 'bin', 'bat', 'sh', 'dll', 'phps', 'phtml', 'xhtml', 'rb', 'msi', 'jsp', 'shtml', 'sth', 'shtm','htaccess');
 
 // list_max_entries_per_page default value = 20
 $list_max_entries_per_page = '20';

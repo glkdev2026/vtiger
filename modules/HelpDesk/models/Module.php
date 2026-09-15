@@ -68,7 +68,7 @@ class HelpDesk_Module_Model extends Vtiger_Module_Model {
 		$picklistvaluesmap = getAllPickListValues("ticketstatus");
         if(in_array('Open', $picklistvaluesmap)) $params[] = 'Open';
         
-		if(count($params) > 0) {
+		if(php7_count($params) > 0) {
 		$result = $db->pquery('SELECT count(*) AS count, COALESCE(vtiger_groups.groupname,vtiger_users.userlabel) as name, COALESCE(vtiger_groups.groupid,vtiger_users.id) as id  FROM vtiger_troubletickets
 						INNER JOIN vtiger_crmentity ON vtiger_troubletickets.ticketid = vtiger_crmentity.crmid
 						LEFT JOIN vtiger_users ON vtiger_users.id=vtiger_crmentity.smownerid AND vtiger_users.status="ACTIVE"
@@ -99,6 +99,7 @@ class HelpDesk_Module_Model extends Vtiger_Module_Model {
 		}
 
 		$params = array();
+		$dateFilterSql = '';
 		if(!empty($dateFilter)) {
 			$dateFilterSql = ' AND createdtime BETWEEN ? AND ? ';
 			//appended time frame and converted to db time zone in showwidget.php
@@ -211,16 +212,16 @@ class HelpDesk_Module_Model extends Vtiger_Module_Model {
 		$headerViewFields = $this->getHeaderViewFieldsList();
 		$allRelationListViewFields = array_merge($headerViewFields,$summaryViewFields);
 		$relatedListFields = array();
-		if(count($allRelationListViewFields) > 0) {
+		if(php7_count($allRelationListViewFields) > 0) {
 			foreach ($allRelationListViewFields as $key => $field) {
 				$relatedListFields[$field->get('column')] = $field->get('name');
 			}
 		}
 
-		if(count($relatedListFields)>0) {
+		if(php7_count($relatedListFields)>0) {
 			$nameFields = $this->getNameFields();
 			foreach($nameFields as $fieldName){
-				if(!$relatedListFields[$fieldName]) {
+				if(!isset($relatedListFields[$fieldName])) {
 					$fieldModel = $this->getField($fieldName);
 					$relatedListFields[$fieldModel->get('column')] = $fieldModel->get('name');
 				}

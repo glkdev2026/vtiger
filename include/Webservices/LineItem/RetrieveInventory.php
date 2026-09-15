@@ -19,7 +19,7 @@ function vtws_retrieve_inventory($id){
 
 	$record = vtws_retrieve($id, $current_user);
 
-	$handler = vtws_getModuleHandlerFromName('LineItem', $user);
+	$handler = vtws_getModuleHandlerFromName('LineItem', $current_user);
     $id = vtws_getIdComponents($id);
     $id = $id[1];
 	$inventoryLineItems = $handler->getAllLineItemForParent($id);

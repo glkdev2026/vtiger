@@ -51,7 +51,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 	 * @return type
 	 */
 	public function getMembers() {
-		if($this->members == false) {
+		if(!property_exists($this, 'members') || $this->members == false) {
 			$this->members = Settings_Groups_Member_Model::getAllByGroup($this, Settings_Groups_Member_Model::REPORTS_VIEW_MODE);
 		}
 		return $this->members;
@@ -329,7 +329,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		$primaryModule = $this->report->primodule;
 		for($i=0; $i<$db->num_rows($result); $i++) {
 			$column = $db->query_result($result, $i, 'columnname');
-			list($tableName, $columnName, $moduleFieldLabel, $fieldName, $type) = split(':', $column);
+			list($tableName, $columnName, $moduleFieldLabel, $fieldName, $type) = explode(':', $column);
 			$fieldLabel  = explode('_', $moduleFieldLabel);
 			$module = $fieldLabel[0];
 			$dbFieldLabel = trim(str_replace(array($module, '_'), " ", $moduleFieldLabel));
@@ -450,7 +450,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		
 		$members = $this->get('members',array());
 		
-		if($members && count($members) == 1){
+		if($members && php7_count($members) == 1){
 			if($members[0] == 'All::Users'){
 				$sharingType = 'Public';
 			}
@@ -552,7 +552,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		$db = PearDatabase::getInstance();
 
 		$calculationFields = $this->get('calculationFields');
-		for ($i=0; $i<count($calculationFields); $i++) {
+		for ($i=0; $i<php7_count($calculationFields); $i++) {
 			$db->pquery('INSERT INTO vtiger_reportsummary (reportsummaryid, summarytype, columnname) VALUES (?,?,?)',
 					array($this->getId(), $i, $calculationFields[$i]));
 		}
@@ -580,7 +580,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 
 		$reportId = $this->getId();
 		$sharingInfo = $this->get('sharingInfo');
-		for($i=0; $i<count($sharingInfo); $i++) {
+		for($i=0; $i<php7_count($sharingInfo); $i++) {
 			$db->pquery('INSERT INTO vtiger_reportsharing(reportid, shareid, setype) VALUES (?,?,?)',
 					array($reportId, $sharingInfo[$i]['id'], $sharingInfo[$i]['type']));
 		}
@@ -594,11 +594,11 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		
 		$members = $this->get('members',array());
 		if(!empty($members)) {
-			$noOfMembers = count($members);
+			$noOfMembers = php7_count($members);
 			for ($i = 0; $i < $noOfMembers; ++$i) {
 				$id = $members[$i];
 				$idComponents = Settings_Groups_Member_Model::getIdComponentsFromQualifiedId($id);
-				if ($idComponents && count($idComponents) == 2) {
+				if ($idComponents && php7_count($idComponents) == 2) {
 					$memberType = $idComponents[0];
 					$memberId = $idComponents[1];
 
@@ -628,7 +628,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		$selectedFields = $this->get('selectedFields');
 
 		if(!empty($selectedFields)){
-		   for($i=0 ;$i<count($selectedFields);$i++) {
+		   for($i=0 ;$i<php7_count($selectedFields);$i++) {
 				if(!empty($selectedFields[$i])) {
 					$db->pquery("INSERT INTO vtiger_selectcolumn(queryid, columnindex, columnname) VALUES (?,?,?)",
 							array($this->getId(), $i, decode_html($selectedFields[$i])));
@@ -651,10 +651,10 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 			$db->pquery('DELETE FROM vtiger_relcriteria_grouping WHERE queryid = ?', array($reportId));
 
 			foreach($advancedFilter as $groupIndex => $groupInfo) {
-				if(empty($groupInfo)) continue;
+				if(!is_array($groupInfo)) continue;
 
 				$groupColumns = $groupInfo['columns'];
-				$groupCondition = $groupInfo['condition'];
+				$groupCondition = isset($groupInfo['condition']) ? $groupInfo['condition'] : '';
 
 				foreach($groupColumns as $columnIndex => $columnCondition) {
 					if(empty($columnCondition)) continue;
@@ -689,7 +689,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 					if(($columnInfo[4] == 'D' || ($columnInfo[4] == 'T' && $columnInfo[1] != 'time_start' && $columnInfo[1] != 'time_end') ||
 									($columnInfo[4] == 'DT')) && ($columnInfo[4] != '' && $advFilterValue != '' ) && !in_array($advFilterComparator, $specialDateConditions)) {
 						$val = Array();
-						for($i=0; $i<count($tempVal); $i++) {
+						for($i=0; $i<php7_count($tempVal); $i++) {
 							if(trim($tempVal[$i]) != '') {
 								$date = new DateTimeField(trim($tempVal[$i]));
 								if($columnInfo[4] == 'D') {
@@ -727,7 +727,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 					$advancedFilter[$groupIndex]["conditionexpression"] = $groupConditionExpression;
 				}
 
-				$groupConditionExpression = $advancedFilter[$groupIndex]["conditionexpression"];
+				$groupConditionExpression = isset($advancedFilter[$groupIndex]["conditionexpression"]) ? $advancedFilter[$groupIndex]["conditionexpression"] : '';
 				if(empty($groupConditionExpression)) continue; // Case when the group doesn't have any column criteria
 
 				$db->pquery("INSERT INTO vtiger_relcriteria_grouping(groupid, queryid, group_condition, condition_expression) VALUES (?,?,?,?)",
@@ -821,7 +821,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		$tmpDir = vglobal('tmp_dir');
 
 		$tempFileName = tempnam($rootDirectory.$tmpDir, 'xls');
-		$fileName = decode_html($this->getName()).'.xls';
+		$fileName = decode_html(str_replace(' ', '_', $this->getName())).'_'.date('Ymd_His').'.xls';
 		$reportRun->writeReportToExcelFile($tempFileName, $advanceFilterSql);
 
 		if(isset($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE')) {
@@ -850,21 +850,20 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 
 		$tempFileName = tempnam($rootDirectory.$tmpDir, 'csv');
 		$reportRun->writeReportToCSVFile($tempFileName, $advanceFilterSql);
-		$fileName = decode_html($this->getName()).'.csv';
+		$fileName = decode_html(str_replace(' ', '_', $this->getName())).'_'.date('Ymd_His').'.csv';
 
 		if(isset($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'],'MSIE')) {
 			header('Pragma: public');
 			header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
 		}
 
+                ob_clean();
 		// we are adding UTF-8 Byte Order Mark - BOM at the bottom so the size should be + 8 of the file size
-		$fileSize = @filesize($tempFileName) + 8;
+		$fileSize = @filesize($tempFileName);
 		header('Content-Encoding: UTF-8');
 		header('Content-type: text/csv; charset=UTF-8');
 		header('Content-Length: '.$fileSize);
 		header('Content-disposition: attachment; filename="'.$fileName.'"');
-		// UTF-8 Byte Order Mark - BOM (Source : http://stackoverflow.com/questions/4348802/how-can-i-output-a-utf-8-csv-in-php-that-excel-will-read-properly)
-		echo "\xEF\xBB\xBF";
 
 		$fp = fopen($tempFileName, 'rb');
 		fpassthru($fp);
@@ -951,7 +950,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		$secondaryModules = $this->getSecondaryModules();
 		if (!empty ($secondaryModules)) {
 			$secondaryModulesList = explode(':', $secondaryModules);
-			$count = count($secondaryModulesList);
+			$count = php7_count($secondaryModulesList);
 
 			$secondaryModuleFields = $this->getSecondaryModuleFields();
 
@@ -1007,7 +1006,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 			$columns = $group['columns'];
 			$and = $or = 0;
 			$block = $group['condition'];
-			if(count($columns) != 1) {
+			if(php7_count($columns) != 1) {
 				foreach($columns as $column) {
 					if($column['column_condition'] == 'and') {
 						++$and;
@@ -1015,7 +1014,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 						++$or;
 					}
 				}
-				if($and == count($columns)-1 && count($columns) != 1) {
+				if($and == php7_count($columns)-1 && php7_count($columns) != 1) {
 					$allGroupColumns = array_merge($allGroupColumns, $group['columns']);
 				} else {
 					$anyGroupColumns = array_merge($anyGroupColumns, $group['columns']);
@@ -1079,8 +1078,9 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		$advancedFilterCriteriaGroup = array();
 		if(is_array($advancedFilter)) {
 			foreach($advancedFilter as $groupIndex => $groupInfo) {
+                            if(!is_array($groupInfo)) continue;
 				$groupColumns = $groupInfo['columns'];
-				$groupCondition = $groupInfo['condition'];
+				$groupCondition = isset($groupInfo['condition']) ? $groupInfo['condition'] : '';
 
 				if (empty ($groupColumns)) {
 					unset($advancedFilter[1]['condition']);
@@ -1137,7 +1137,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		$params = array($this->getName());
 
 		$record = $this->getId();
-		if ($record && !$this->get('isDuplicate')) {
+		if ($record && !filter_var($this->get('isDuplicate'), FILTER_VALIDATE_BOOL)) {
 			$query .= " AND reportid != ?";
 			array_push($params, $record);
 		}
@@ -1175,7 +1175,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		return Reports_ScheduleReports_Model::getInstanceById($this->getId());
 	}
 
-	public function getRecordsListFromRequest(Vtiger_Request $request) {
+	public function getRecordsListFromRequest(Vtiger_Request $request, $model = false) {
 		$folderId = $request->get('viewname');
 		$module = $request->get('module');
 		$selectedIds = $request->get('selected_ids');
@@ -1184,7 +1184,7 @@ class Reports_Record_Model extends Vtiger_Record_Model {
 		$searchParams = $searchParams[0];
 
 		if(!empty($selectedIds) && $selectedIds != 'all') {
-			if(!empty($selectedIds) && count($selectedIds) > 0) {
+			if(!empty($selectedIds) && php7_count($selectedIds) > 0) {
 				return $selectedIds;
 			}
 		}

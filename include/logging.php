@@ -21,11 +21,5 @@ require_once('config.php');
 
 // Performance Optimization: Configure the log folder
 @include_once('config.performance.php');
-global $PERFORMANCE_CONFIG;
-
-define('LOG4PHP_DEFAULT_INIT_OVERRIDE', true);
-define('LOG4PHP_DIR', 'libraries/log4php.debug');
-require_once(LOG4PHP_DIR.'/Logger.php');
-Logger::configure('log4php.properties');
-
+require_once 'modules/Vtiger/helpers/Logger.php';
 ?>

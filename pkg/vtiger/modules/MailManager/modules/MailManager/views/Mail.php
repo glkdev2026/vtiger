@@ -37,14 +37,19 @@ class MailManager_Mail_View extends MailManager_Abstract_View {
 			$viewer->assign('ATTACHMENTS', $mail->attachments(false));
 			$body = $mail->body();
 			$inlineAttachments = $mail->inlineAttachments();
+			$inline_cid = array();
 			if(is_array($inlineAttachments)) {
 				foreach($inlineAttachments as $index => $att) {
 					$cid = $att['cid'];
 					$attch_name = Vtiger_MailRecord::__mime_decode($att['filename']);
 					$id = $mail->muid();
-					$src = "index.php?module=MailManager&view=Index&_operation=mail&_operationarg=attachment_dld&_muid=$id&_atname=".urlencode($attch_name);
+					// attachment id from $att
+					$attId = $att['atid'];
+					// passing in the url : 
+					$src = "index.php?module=MailManager&view=Index&_operation=mail&_operationarg=attachment_dld&_muid=$id&_atid=$attId&_atname=".urlencode($attch_name);
 					$body = preg_replace('/cid:'.$cid.'/', $src, $body);
-					$inline_cid[$attch_name] = $cid;
+					// before we used to pass $attach_name, changed to $att['atid'] or $attId
+					$inline_cid[$attId] = $cid;
 				}
 			}
 			$viewer->assign('INLINE_ATT', $inline_cid);
@@ -123,11 +128,11 @@ class MailManager_Mail_View extends MailManager_Abstract_View {
 				foreach($toArray as $to) {
 					$relatedtos = MailManager::lookupMailInVtiger($to, $currentUserModel);
 					$referenceArray = Array('Contacts','Accounts','Leads');
-					for($j=0; $j<count($referenceArray); $j++) {
+					for($j=0; $j<php7_count($referenceArray); $j++) {
 						$val = $referenceArray[$j];
 						if (!empty($relatedtos) && is_array($relatedtos)) {
-							for($i=0; $i<count($relatedtos); $i++) {
-								if($i == count($relatedtos)-1) {
+							for($i=0; $i<php7_count($relatedtos); $i++) {
+								if($i == php7_count($relatedtos)-1) {
 									$relateto = vtws_getIdComponents($relatedtos[$i]['record']);
 									$parentIds = $relateto[1]."@1";
 								} elseif($relatedtos[$i]['module'] == $val) {
@@ -142,7 +147,7 @@ class MailManager_Mail_View extends MailManager_Abstract_View {
 						}
 					}
 					if($parentIds == '') {
-						if(count($relatedtos) > 0) {
+						if(php7_count($relatedtos) > 0) {
 							$relateto = vtws_getIdComponents($relatedtos[0]['record']);
 							$parentIds = $relateto[1]."@1";
 							break;

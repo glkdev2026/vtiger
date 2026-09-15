@@ -125,6 +125,7 @@ class CurrencyField {
     public static function convertToUserFormat($value, $user=null, $skipConversion=false, $skipFormatting=false) {
 		// To support negative values
 		$negative = false;
+		if(!$value) return $value;
 		if(stripos($value, '-') === 0) {
 			$negative = true;
 			$value = substr($value, 1);
@@ -197,7 +198,7 @@ class CurrencyField {
      * @return Formatted Currency
      */
 	private function _formatCurrencyValue($value) {
-        if(empty($value)) {
+        if(empty($value) || !is_numeric($value)) {
             $value = 0;
         }
         $currencyPattern = $this->currencyFormat;
@@ -355,15 +356,15 @@ class CurrencyField {
         $decimalSeparator  = $this->decimalSeparator;
 		if(empty($currencySeparator)) $currencySeparator = ' ';
 		if(empty($decimalSeparator)) $decimalSeparator = ' ';
-        $value = str_replace("$currencySeparator", "", $value);
-        $value = str_replace("$decimalSeparator", ".", $value);
+        $value = isset($value) ? str_replace("$currencySeparator", "", $value) : '';
+        $value = isset($value) ? str_replace("$decimalSeparator", ".", $value) : '';
 
 		if($skipConversion == false) {
 			$value = self::convertToDollar($value,$this->conversionRate);
 		}
 		//$value = round($value, $this->maxNumberOfDecimals);
 
-        return $value;
+        return (float)$value;
     }
 
     /**
@@ -415,7 +416,7 @@ class CurrencyField {
 	
 	public static function convertFromDollar($amount, $conversionRate) {
 		$currencyField = new CurrencyField($amount);
-		return round($amount * $conversionRate, $currencyField->maxNumberOfDecimals);
+		return round( (float)$amount * (float)$conversionRate, $currencyField->maxNumberOfDecimals);
 	}
 	
 	/** This function returns the amount converted from master currency.
@@ -423,7 +424,7 @@ class CurrencyField {
 	 * param $crate - conversion rate.
 	 */
 	public static function convertFromMasterCurrency($amount, $conversionRate) {
-		return $amount * $conversionRate;
+		return (float)$amount * (float)$conversionRate;
 	}
 	
 	function currencyDecimalFormat($value, $user = null){
@@ -447,7 +448,7 @@ class CurrencyField {
 				$decimalSeparator = $user->currency_decimal_separator;
 			}
 
-			$fieldValue = explode(decode_html($decimalSeparator), $value);
+			$fieldValue = vtlib_array(explode(decode_html($decimalSeparator), $value));
 			if(strlen($fieldValue[1]) <= 1){
 				if(strlen($fieldValue[1]) == 1) {
 					return $value = $fieldValue[0].$decimalSeparator.$fieldValue[1];

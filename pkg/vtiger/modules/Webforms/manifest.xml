@@ -4,10 +4,10 @@
 	<label>Webforms</label>
 	<parent></parent>
 	<type>extension</type>
-	<version>1.6</version>
+	<version>1.7</version>
 	<dependencies>
 		<vtiger_version>6.0.0rc</vtiger_version>
-		<vtiger_max_version>7.*</vtiger_max_version>
+		<vtiger_max_version>8.*</vtiger_max_version>
 	</dependencies>
 	<migrations>
 		<migration version='1.4'>
@@ -74,6 +74,7 @@
 			<sql><![CDATA[CREATE TABLE `vtiger_webforms_field` (
   `id` int(19) NOT NULL AUTO_INCREMENT,
   `webformid` int(19) NOT NULL,
+  `fieldid` int(19) NOT NULL,
   `fieldname` varchar(50) NOT NULL,
   `neutralizedfield` varchar(50) NOT NULL,
   `defaultvalue` TEXT DEFAULT NULL,
@@ -85,7 +86,7 @@
   KEY `fk_1_vtiger_webforms_field` (`webformid`),
   KEY `fk_2_vtiger_webforms_field` (`fieldname`),
   CONSTRAINT `fk_1_vtiger_webforms_field` FOREIGN KEY (`webformid`) REFERENCES `vtiger_webforms` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_3_vtiger_webforms_field` FOREIGN KEY (`fieldname`) REFERENCES `vtiger_field` (`fieldname`) ON DELETE CASCADE
+  CONSTRAINT `fk_4_vtiger_webforms_field` FOREIGN KEY (`fieldid`) REFERENCES `vtiger_field` (`fieldid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8]]></sql>
 		</table>
 	</tables>

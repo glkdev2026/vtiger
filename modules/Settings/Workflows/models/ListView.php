@@ -102,7 +102,7 @@ class Settings_Workflows_ListView_Model extends Settings_Vtiger_ListView_Model {
 			   $wfCond = json_decode($test,true);
 			   $conditionList = array();
 			   if(is_array($wfCond)) {
-					for ($k=0; $k<(count($wfCond)); ++$k){
+					for ($k=0; $k<(php7_count($wfCond)); ++$k){
 					   $conditionList[] = $wfCond[$k]['fieldname'].' '.$wfCond[$k]['operation'].' '.$wfCond[$k]['value'];
 					}
 			   }
@@ -144,7 +144,7 @@ class Settings_Workflows_ListView_Model extends Settings_Vtiger_ListView_Model {
 
 		$sourceModule = $this->get('sourceModule');
 		if($sourceModule) {
-			$listQuery .= " WHERE module_name = '$sourceModule'";
+			$listQuery .= " WHERE module_name = ?";
             array_push($params, $sourceModule);
 		}
 		$search_value = $this->get('search_value');

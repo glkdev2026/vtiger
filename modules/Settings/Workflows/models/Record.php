@@ -203,7 +203,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model {
 		return $arr[$executionCondition-1];
 	}
 
-	function getV7executionConditionAsLabel($executionCondition=null, $module_name) {
+	function getV7executionConditionAsLabel($executionCondition=null, $module_name=null) {
 		if($executionCondition == null) {
 			$executionCondition = $this->get('execution_condition');
 		}
@@ -232,7 +232,9 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model {
 	function transformToAdvancedFilterCondition() {
 		$conditions = $this->get('conditions');
 		$transformedConditions = array();
-
+		$firstGroup = array();
+		$secondGroup = array();
+		$isTimeValue = false;
 		if(!empty($conditions)) {
 			foreach($conditions as $index => $info) {
 				$columnName = $info['fieldname'];
@@ -240,13 +242,23 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model {
 				// To convert date value from yyyy-mm-dd format to user format
 				$valueArray = explode(',', $value);
 				$isDateValue = false;
-				for($i = 0; $i < count($valueArray); $i++) {
+				for($i = 0; $i < php7_count($valueArray); $i++) {
 					if(Vtiger_Functions::isDateValue($valueArray[$i])) {
 						$isDateValue = true;
 						$valueArray[$i] = DateTimeField::convertToUserFormat($valueArray[$i]);
 					}
+					if(Vtiger_Functions::isTimeValue($valueArray[$i])){
+						$isTimeValue = true;
+						$userModel = Users_Record_Model::getCurrentUserModel();
+						$hourFormat = $userModel->get('hour_format');
+						if($hourFormat == '24') {
+							$valueArray[$i] = date('H:i', strtotime($valueArray[$i]));
+						} else {
+							$valueArray[$i] = date('g:i A', strtotime($valueArray[$i]));
+						}
+					}
 				}
-				if($isDateValue) {
+				if($isDateValue || $isTimeValue ) {
 					$value = implode(',', $valueArray);
 				}
 				// End
@@ -304,7 +316,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model {
 					foreach($columns as $column) {
 						$wfCondition[] = array('fieldname'=>$column['columnname'], 'operation'=>$column['comparator'],
 							'value'=>$column['value'], 'valuetype'=>$column['valuetype'], 'joincondition'=>$column['column_condition'],
-							'groupjoin'=>$condition['condition'], 'groupid'=>$column['groupid']);
+							'groupjoin'=> isset($condition['condition']) ? $condition['condition'] : '', 'groupid'=>$column['groupid']);
 					}
 				}
 			}
@@ -431,11 +443,11 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model {
 		$wfCond = json_decode($test,true);
 		$conditionList = array();
 		if(is_array($wfCond)) {
-			for ($k=0; $k<(count($wfCond)); ++$k){
+			for ($k=0; $k<(php7_count($wfCond)); ++$k){
 				$fieldName = $wfCond[$k]['fieldname'];
 				preg_match('/\((\w+) : \(([_\w]+)\) (\w+)\)/', $fieldName, $matches);
 
-				if(count($matches)==0){
+				if(php7_count($matches)==0){
 					$fieldModel = Vtiger_Field_Model::getInstance($fieldName, $moduleModel);
 					if($fieldModel) {
 						$fieldLabel = vtranslate($fieldModel->get('label'), $moduleName);
@@ -458,7 +470,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model {
 				}
 				$value = $wfCond[$k]['value'];
 				$operation = $wfCond[$k]['operation'];
-				if($wfCond[$k]['groupjoin'] == 'and') {
+				if(isset($wfCond[$k]['groupjoin']) && $wfCond[$k]['groupjoin'] == 'and') {
 					$conditionGroup = 'All';
 				} else {
 					$conditionGroup = 'Any';
@@ -479,7 +491,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model {
 						$value = getUserFullName($value);
 					} else {
 						$groupNameList = getGroupName($value);
-						$value = $groupNameList[0];
+						$value = isset($groupNameList[0]) ? $groupNameList[0] : '';
 					}
 				}
 				if ($value) {
@@ -490,7 +502,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model {
 					}
 					if ($fieldModel && (in_array($fieldDataType, array('picklist', 'multipicklist')))) {
 						$picklistValues = explode(',', $value);
-						if (count($picklistValues) > 1) {
+						if (php7_count($picklistValues) > 1) {
 							$translatedValues = array();
 							foreach ($picklistValues as $selectedValue) {
 								array_push($translatedValues, vtranslate($selectedValue, $moduleName));
@@ -516,6 +528,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model {
 		$tasks = Settings_Workflows_TaskRecord_Model::getAllForWorkflow($this, true);
 		foreach($tasks as $task) {
 			$taskName = $task->getTaskType()->get('tasktypename');
+			$actions[$taskName] = isset($actions[$taskName]) ? $actions[$taskName] : 0;
 			$actions[$taskName] = $actions[$taskName] + 1;
 		}
 		return $actions;

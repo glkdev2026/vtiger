@@ -99,6 +99,7 @@ $GLOBALS['_PEAR_error_handler_stack']    = array();
  * @since      Class available since PHP 4.0.2
  * @link        http://pear.php.net/manual/en/core.pear.php#core.pear.pear
  */
+#[\AllowDynamicProperties]
 class PEAR
 {
     // {{{ properties
@@ -230,7 +231,7 @@ class PEAR
     * @return mixed   A reference to the variable. If not set it will be
     *                 auto initialised to NULL.
     */
-    function &getStaticProperty($class, $var)
+    static function &getStaticProperty($class, $var)
     {
         static $properties;
         if (!isset($properties[$class])) {
@@ -279,7 +280,7 @@ class PEAR
      * @access  public
      * @return  bool    true if parameter is an error
      */
-    function isError($data, $code = null)
+    static function isError($data, $code = null)
     {
         if (is_a($data, 'PEAR_Error')) {
             if (is_null($code)) {
@@ -524,7 +525,7 @@ class PEAR
      * @see PEAR::setErrorHandling
      * @since PHP 4.0.5
      */
-    function &raiseError($message = null,
+    static function &raiseError($message = null,
                          $code = null,
                          $mode = null,
                          $options = null,
@@ -826,6 +827,7 @@ function _PEAR_call_destructors()
  * @see        PEAR::raiseError(), PEAR::throwError()
  * @since      Class available since PHP 4.0.2
  */
+#[\AllowDynamicProperties]
 class PEAR_Error
 {
     // {{{ properties

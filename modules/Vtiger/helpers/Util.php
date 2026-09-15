@@ -97,7 +97,7 @@ class Vtiger_Util_Helper {
 	 * @return <String>
 	 */
 	public static function pluralize($count, $text) {
-		return $count ." ". (($count == 1) ? vtranslate("$text") : vtranslate("${text}S"));
+		return $count ." ". (($count == 1) ? vtranslate("$text") : vtranslate("{$text}S"));
 	}
 
 	/**
@@ -105,7 +105,7 @@ class Vtiger_Util_Helper {
 	 */
 	public static function toSafeHTML($input) {
 		global $default_charset;
-		return htmlentities($input, ENT_QUOTES, $default_charset);
+		return $input ? htmlentities($input, ENT_QUOTES, $default_charset) : $input;
 	}
 
 	/**
@@ -115,7 +115,7 @@ class Vtiger_Util_Helper {
 	 */
 	public static function toVtiger6SafeHTML($input) {
 		$allowableTags = '<a><br>';
-		return strip_tags($input, $allowableTags);
+		return strip_tags((string) $input, $allowableTags);
 	}
 	/**
 	 * Function to validate the input with given pattern.
@@ -140,7 +140,7 @@ class Vtiger_Util_Helper {
 		global $adb;
 		$query = 'Select deleted from vtiger_crmentity where crmid=?';
 		$result = $adb->pquery($query, array($recordId));
-		return $adb->query_result($result, 'deleted');
+		return ($adb->num_rows($result) <= 0) ? 1 : (int) $adb->query_result($result, 0, 'deleted');
 	}
 
 	/**
@@ -182,7 +182,14 @@ class Vtiger_Util_Helper {
 			 */
 			if ($currentUser->get('date_format') === 'mm-dd-yyyy') {
 				$dateInUserFormat = str_replace('-', '/', $dateInUserFormat);
-			}
+			} else if ($currentUser->get('date_format') === 'dd/mm/yyyy'){
+				// strtotime expects m/d/y format - adjusting the format to make it friendly to its convention
+                $dateArray = explode('/', $dateInUserFormat);
+                $temp = $dateArray[0];
+                $dateArray[0] = $dateArray[1];
+                $dateArray[1] = $temp;
+                $dateInUserFormat = implode('/', $dateArray);
+            }
 
 			$date = strtotime($dateInUserFormat);
 			$formatedDate = vtranslate('LBL_'.date('D', $date)) . ' ' . date('d', $date) . ' ' . vtranslate('LBL_'.date('M', $date));
@@ -262,13 +269,17 @@ class Vtiger_Util_Helper {
 			$dateTimeInUserFormat = Vtiger_Datetime_UIType::getDisplayDateTimeValue($dateTime);
 		}
 
-		list($dateInUserFormat, $timeInUserFormat) = explode(' ', $dateTimeInUserFormat);
-		list($hours, $minutes, $seconds) = explode(':', $timeInUserFormat);
-
-		$displayTime = $hours .':'. $minutes;
-		if ($currentUser->get('hour_format') === '12') {
-			$displayTime = Vtiger_Time_UIType::getTimeValueInAMorPM($displayTime);
+		if (substr_count($dateTimeInUserFormat,' ') == 1) $dateTimeInUserFormat .= ' '; // init for meridiem if not present
+		list($dateInUserFormat, $timeInUserFormat, $meridiem) = explode(' ', $dateTimeInUserFormat);
+		if($meridiem && $currentUser->get('hour_format') === '12' ){
+			$displayTime = $timeInUserFormat.' '.$meridiem;
+		} else {
+			list($hours, $minutes, $seconds) = explode(':', $timeInUserFormat);
+			$displayTime = $hours .':'. $minutes;
+			if ($currentUser->get('hour_format') === '12') {
+				$displayTime = Vtiger_Time_UIType::getTimeValueInAMorPM($displayTime);
 		}
+	}
 
 		/**
 		 * To support strtotime() for 'mm-dd-yyyy' format the separator should be '/'
@@ -277,6 +288,13 @@ class Vtiger_Util_Helper {
 		 */
 		if ($currentUser->get('date_format') === 'mm-dd-yyyy') {
 			$dateInUserFormat = str_replace('-', '/', $dateInUserFormat);
+		} else if ($currentUser->get('date_format') === 'dd/mm/yyyy'){
+			// strtotime expects the format m/d/y making changes to its convenient
+			$dateArray = explode('/', $dateInUserFormat);
+			$temp = $dateArray[0];
+			$dateArray[0] = $dateArray[1];
+			$dateArray[1] = $temp;
+			$dateInUserFormat = implode('/', $dateArray);
 		}
 
 		$date = strtotime($dateInUserFormat);
@@ -391,7 +409,7 @@ class Vtiger_Util_Helper {
 		$fileName = rtrim($fileName, '\\/<>?*:"<>|');
 
 		$fileNameParts = explode('.', $fileName);
-		$countOfFileNameParts = count($fileNameParts);
+		$countOfFileNameParts = php7_count($fileNameParts);
 		$badExtensionFound = false;
 
 		for ($i=0; $i<$countOfFileNameParts; $i++) {
@@ -585,7 +603,7 @@ class Vtiger_Util_Helper {
 				   $advFilterFieldInfoFormat = array();
 				   $fieldName = $fieldSearchInfo[0];
 				   preg_match('/(\w+) ; \((\w+)\) (\w+)/', $fieldName, $matches);
-					if (count($matches) != 0) {
+					if (php7_count($matches) != 0) {
 						list($full, $referenceParentField, $referenceModule, $referenceFieldName) = $matches;
 						$referenceModuleModel = Vtiger_Module_Model::getInstance($referenceModule);
 						$fieldInfo = Vtiger_Field_Model::getInstance($referenceFieldName, $referenceModuleModel);
@@ -642,7 +660,7 @@ class Vtiger_Util_Helper {
 				   $advFilterFieldInfoFormat['column_condition'] = $groupConditionGlue;
 				   $groupColumnsInfo[] = $advFilterFieldInfoFormat;
 			}
-			$noOfConditions = count($groupColumnsInfo);
+			$noOfConditions = php7_count($groupColumnsInfo);
 			//to remove the last column condition
 			$groupColumnsInfo[$noOfConditions-1]['column_condition']  = '';
 			$groupConditionInfo['columns'] = $groupColumnsInfo;
@@ -651,7 +669,7 @@ class Vtiger_Util_Helper {
 			$groupIterator++;
 		}
 		//We aer removing last condition since this condition if there is next group and this is the last group
-		unset($advFilterConditionFormat[count($advFilterConditionFormat)-1]['condition']);
+		unset($advFilterConditionFormat[php7_count($advFilterConditionFormat)-1]['condition']);
 		return $advFilterConditionFormat;
 
 	}
@@ -701,7 +719,7 @@ class Vtiger_Util_Helper {
 	* @return returns default value for data type if match case found
 	* else returns empty string
 	*/
-   function getDefaultMandatoryValue($dataType) {
+   static function getDefaultMandatoryValue($dataType) {
 	   $value;
 	   switch ($dataType) {
 		   case 'date':
@@ -939,7 +957,7 @@ class Vtiger_Util_Helper {
 		}
 
 		// see how many we have
-		$i = count($matches['browser']);
+		$i = php7_count($matches['browser']);
 		if ($i != 1) {
 			//we will have two since we are not using 'other' argument yet
 			//see if version is before or after the name
@@ -1181,7 +1199,7 @@ class Vtiger_Util_Helper {
 									$value = vtws_getWebserviceEntityId("DocumentFolders", "1");
 									break;
 			case 'reference'	:	$referenceFieldModule = $fieldModel->getReferenceList(true);
-									if (count($referenceFieldModule) > 0) {
+									if (php7_count($referenceFieldModule) > 0) {
 										$user = Users_Record_Model::getCurrentUserModel();
 										$referenceModule = $referenceFieldModule[0];
 										$referenceFieldModuleModel = Vtiger_Module_Model::getInstance($referenceModule);
@@ -1217,7 +1235,7 @@ class Vtiger_Util_Helper {
 												if (isset($source) && !empty($source)) {
 													$element['source'] = $source;
 												}
-												if (!function_exists(vtws_create)) {
+												if (!function_exists("vtws_create")) {
 													include_once 'include/Webservices/Create.php';
 												}
 												$entity = vtws_create($referenceModule, $element, $user);
@@ -1263,7 +1281,7 @@ class Vtiger_Util_Helper {
     public static function validateFieldValue($fieldValue,$fieldModel){
         $fieldDataType = $fieldModel->getFieldDataType();
         $fieldInfo = $fieldModel->getFieldInfo();
-        $editablePicklistValues = $fieldInfo['editablepicklistvalues'];
+        $editablePicklistValues = isset($fieldInfo['editablepicklistvalues'])? $fieldInfo['editablepicklistvalues'] : null;
         if($fieldValue && $fieldDataType == 'picklist'){
            if(!empty($editablePicklistValues) && !isset($editablePicklistValues[$fieldValue])){
                 $fieldValue = null;
@@ -1271,7 +1289,7 @@ class Vtiger_Util_Helper {
         }elseif(!empty($fieldValue) && $fieldDataType == 'multipicklist'){
             if(!empty($editablePicklistValues)){
                 foreach($fieldValue as $key => $value){
-                    if(!isset($editablePicklistValues[$fieldValue])){
+                    if(!isset($editablePicklistValues[$value])){
                         unset($fieldValue[$key]);
                     }
                 }

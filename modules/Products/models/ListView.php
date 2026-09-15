@@ -31,7 +31,7 @@ class Products_ListView_Model extends Vtiger_ListView_Model {
         }
         
         $glue = "";
-        if(count($queryGenerator->getWhereFields()) > 0 && (count($searchParams)) > 0) {
+        if(php7_count($queryGenerator->getWhereFields()) > 0 && (php7_count($searchParams)) > 0) {
             $glue = QueryGenerator::$AND;
         }
         $queryGenerator->parseAdvFilterList($searchParams, $glue);
@@ -119,7 +119,7 @@ class Products_ListView_Model extends Vtiger_ListView_Model {
 	public function addSubProductsQuery($listQuery){
 		$productId = $this->get('productId');
 
-		$splitQuery = split('WHERE', $listQuery);
+		$splitQuery = explode('WHERE', $listQuery);
 		$splitQuery[0] .= " LEFT JOIN vtiger_seproductsrel ON vtiger_seproductsrel.crmid = vtiger_products.productid AND vtiger_seproductsrel.setype='Products'";
 		$splitQuery[1] .= " AND vtiger_seproductsrel.productid = $productId AND vtiger_products.discontinued = 1";
 
@@ -160,7 +160,7 @@ class Products_ListView_Model extends Vtiger_ListView_Model {
         }
         
         $glue = "";
-        if(count($queryGenerator->getWhereFields()) > 0 && (count($searchParams)) > 0) {
+        if(php7_count($queryGenerator->getWhereFields()) > 0 && (php7_count($searchParams)) > 0) {
             $glue = QueryGenerator::$AND;
         }
         $queryGenerator->parseAdvFilterList($searchParams, $glue);
@@ -193,7 +193,7 @@ class Products_ListView_Model extends Vtiger_ListView_Model {
 		$position = stripos($listQuery, ' from ');
 		if ($position) {
 			$split = preg_split('/ from /i', $listQuery);
-			$splitCount = count($split);
+			$splitCount = php7_count($split);
 			$listQuery = 'SELECT count(*) AS count ';
 			for ($i=1; $i<$splitCount; $i++) {
 				$listQuery = $listQuery. ' FROM ' .$split[$i];

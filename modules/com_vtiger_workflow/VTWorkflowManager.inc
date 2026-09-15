@@ -12,6 +12,7 @@ require_once("VTJsonCondition.inc");
 require_once 'include/utils/ConfigReader.php';
 require_once 'includes/runtime/Cache.php';
 
+#[\AllowDynamicProperties]
 class VTWorkflowManager{
 
 	static $ON_FIRST_SAVE = 1;
@@ -41,20 +42,20 @@ class VTWorkflowManager{
 			$workflowId = $adb->getUniqueID("com_vtiger_workflows");
 			$workflow->id = $workflowId;
 			$wf=$workflow;
-			if($wf->filtersavedinnew == null) $wf->filtersavedinnew = 5;
+			if(!isset($wf->filtersavedinnew) || $wf->filtersavedinnew == null) $wf->filtersavedinnew = 5;
 
 			$result=$adb->getColumnNames("com_vtiger_workflows");
 			if(in_array("type",$result)) {
 				$adb->pquery("insert into com_vtiger_workflows
 							(workflow_id, module_name, summary, test, execution_condition, type, defaultworkflow, filtersavedinnew,
 							schtypeid, schtime, schdayofmonth, schdayofweek, schannualdates, nexttrigger_time, status, workflowname) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-						array($workflowId, $wf->moduleName, $wf->description, $wf->test,  $wf->executionCondition, $wf->type, $wf->defaultworkflow, $wf->filtersavedinnew,
+						array($workflowId, $wf->moduleName, $wf->description, ($wf->test?$wf->test:'[]'),  $wf->executionCondition, $wf->type, $wf->defaultworkflow, $wf->filtersavedinnew,
 						$wf->schtypeid, $wf->schtime, $wf->schdayofmonth, $wf->schdayofweek, $wf->schannualdates, $wf->nexttrigger_time, $wf->status, $wf->name));
 			} else {
 				$adb->pquery("insert into com_vtiger_workflows
 							(workflow_id, module_name, summary, test, execution_condition, defaultworkflow,filtersavedinnew,
 							schtypeid, schtime, schdayofmonth, schdayofweek, schannualdates, nexttrigger_time, status, workflowname) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-						array($workflowId, $wf->moduleName, $wf->description, $wf->test,  $wf->executionCondition, $wf->defaultworkflow, $wf->filtersavedinnew,
+						array($workflowId, $wf->moduleName, $wf->description, ($wf->test?$wf->test:'[]'),  $wf->executionCondition, $wf->defaultworkflow, $wf->filtersavedinnew,
 						$wf->schtypeid, $wf->schtime, $wf->schdayofmonth, $wf->schdayofweek, $wf->schannualdates, $wf->nexttrigger_time, $wf->status, $wf->name));
 			}
 		}
@@ -87,7 +88,8 @@ class VTWorkflowManager{
 		$query = 'SELECT * FROM com_vtiger_workflows INNER JOIN vtiger_tab ON vtiger_tab.name = com_vtiger_workflows.module_name WHERE vtiger_tab.presence IN (0,2) AND execution_condition = ? AND status=?';
 		$params = array(VTWorkflowManager::$ON_SCHEDULE,1);
 		if($referenceTime != '') {
-			$query .= " AND (nexttrigger_time = '' OR nexttrigger_time IS NULL OR nexttrigger_time <= ?)";
+			//Removed the coparision of empty string with the nexttrigger_time to avoid MySQL error INCORRECT DATE TIME VALUE
+			$query .= " AND (nexttrigger_time IS NULL OR nexttrigger_time <= ?)";
 			array_push($params, $referenceTime);
 		}
 		$result = $adb->pquery($query, $params);
@@ -340,6 +342,7 @@ class VTWorkflowManager{
 	}
 }
 
+#[\AllowDynamicProperties]
 class Workflow{
 	static $SCHEDULED_HOURLY = 1;
 	static $SCHEDULED_DAILY = 2;
@@ -353,7 +356,13 @@ class Workflow{
 		$this->conditionStrategy = new VTJsonCondition();
 	}
 
+	function __get($name) {
+		return property_exists($this, $name) ? $this->$name : null;
+	}
+
 	function setup($row) {
+		$row = vtlib_array($row);
+		
 		$this->id = $row['workflow_id'];
 		$this->moduleName = $row['module_name'];
 		$this->description = to_html($row['summary']);
@@ -426,7 +435,7 @@ class Workflow{
 				//Check whether task is VTEmailTask and then check emailoptout value
 				//if enabled don't queue the email
 				if($taskClassName == 'VTEmailTask'){
-					if($data['emailoptout'] == 1) continue;
+					if(isset($data['emailoptout']) && $data['emailoptout'] == 1) continue;
 				}
 				$delay = 0;
 				$trigger = $task->trigger;
@@ -580,7 +589,7 @@ class Workflow{
 							break;
 						} else {
 							//current time greater than scheduled time, get the next weekday
-							if (count($scheduledDaysOfWeek) == 1) { //if only one weekday selected, then get next week
+							if (php7_count($scheduledDaysOfWeek) == 1) { //if only one weekday selected, then get next week
 								$nextTime = date('Y-m-d', strtotime('next ' . $weekDays[$weekDay])) . ' ' . $scheduledTime;
 							} else {
 								$nextWeekDay = $scheduledDaysOfWeek[$index + 1]; // its the last day of the week i.e. sunday
@@ -709,7 +718,7 @@ class Workflow{
 				$j = 1;
 				$currentDateTime = date('Y:m:d H:i:s', $currentTime);
 				do{
-					for($i = 0; $i < count($annualDates); $i++) {
+					for($i = 0; $i < php7_count($annualDates); $i++) {
 						$nextTriggerDay = $annualDates[$i];
 						$nextTime = date('Y:m:d H:i:s', strtotime($nextTriggerDay.' '.$scheduledTime.'+'.$j.' year'));
 						if($nextTime > $currentDateTime) {

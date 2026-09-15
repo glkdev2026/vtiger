@@ -351,6 +351,8 @@ $languageStrings = array(
 	'LBL_LAST_60_DAYS'             => 'Last 60 Days'                , 
 	'LBL_LAST_90_DAYS'             => 'Last 90 Days'                , 
 	'LBL_LAST_120_DAYS'            => 'Last 120 Days'               , 
+	'LBL_NEXT_7_DAYS'             => 'Next 7 Days'                ,    
+	'LBL_NEXT_14_DAYS'             => 'Next 14 Days'                ,  
 	'LBL_NEXT_30_DAYS'             => 'Next 30 Days'                , 
 	'LBL_NEXT_60_DAYS'             => 'Next 60 Days'                , 
 	'LBL_NEXT_90_DAYS'             => 'Next 90 Days'                , 
@@ -702,7 +704,7 @@ $languageStrings = array(
     // SMSNotifier Phone Format Warning
     'LBL_PHONE_FORMAT_WARNING' => 'stellen Sie bitte sicher, dass die Telefonnummer ist in der internationalen E.164-Format',
     'LBL_PHONEFORMAT_WARNING_CONTENT' => 'Die E.164 Zahlenformatierung können maximal fünfzehn Ziffern haben und sind in der Regel wie folgt geschrieben: [+] [Ländercode] [Teilnehmernummer mit Vorwahl] 
-                                           Zum Beispiel, um eine US-Telefonnummer (415 599 2671) in das E.164-Format zu konvertieren, müsste man die '+'-Präfix und die Landesvorwahl vor der Nummer (die 1) (+1 415 599 2671 hinzufügen ). In Großbritannien und vielen anderen Ländern international, erfordert lokale Wahl die Zugabe einer 0 vor der Teilnehmernummer. Allerdings E.164 Formatierung verwenden, muss dieser 0 entfernt werden. Eine Zahl wie 020 7183 8750 in Großbritannien gezeigt als +44 20 7183 8750 formatiert werden.',
+                                           Zum Beispiel, um eine US-Telefonnummer (415 599 2671) in das E.164-Format zu konvertieren, müsste man die -Präfix und die Landesvorwahl vor der Nummer (die 1) (+1 415 599 2671 hinzufügen ). In Großbritannien und vielen anderen Ländern international, erfordert lokale Wahl die Zugabe einer 0 vor der Teilnehmernummer. Allerdings E.164 Formatierung verwenden, muss dieser 0 entfernt werden. Eine Zahl wie 020 7183 8750 in Großbritannien gezeigt als +44 20 7183 8750 formatiert werden.',
     'LBL_WARNING' => 'Warnung',
 	'LBL_SEND_PDF_FOR_SIGNING' => 'PDF senden zum Signieren',
 	'LBL_INCLUDE_SIGNATURE_INFO' => 'Signatur in Meine Einstellungen gesetzt werden, um den Boden der E-Mail angehängt werden',

@@ -57,7 +57,7 @@ function vtws_generateRandomAccessKey($length=10){
 	$accesskey = "";
 	$maxIndex = strlen($source);
 	for($i=0;$i<$length;++$i){
-		$accesskey = $accesskey.substr($source,rand(null,$maxIndex),1);
+		$accesskey = $accesskey.substr($source,rand(0,$maxIndex),1);
 	}
 	return $accesskey;
 }
@@ -117,10 +117,19 @@ function vtws_getUserWebservicesGroups($tabId,$user){
 }
 
 function vtws_getIdComponents($elementid){
+	$elementid = (string)$elementid;
+	if ($elementid && is_numeric($elementid)) return array($elementid); // during (UserId permission check)
+	if (!$elementid || !preg_match("/[0-9]+x[0-9]+/", $elementid)) {
+		throw new WebServiceException(WebServiceErrorCode::$INVALIDID,"Id specified is incorrect");
+	}
 	return explode("x",$elementid);
 }
 
 function vtws_getId($objId, $elemId){
+	if(is_array($elemId)){$elemId=implode(' ',$elemId);}
+	if(!is_numeric($objId) || !is_numeric($elemId)) {
+		throw new WebServiceException(WebServiceErrorCode::$INVALIDID,"Id specified is incorrect");
+	}
 	return $objId."x".$elemId;
 }
 
@@ -139,9 +148,10 @@ function getEmailFieldId($meta, $entityId){
 function vtws_getParameter($parameterArray, $paramName,$default=null){
 
 	if (!get_magic_quotes_gpc()) {
-		if(is_array($parameterArray[$paramName])) {
+		$param = null;
+		if(isset($parameterArray[$paramName]) && is_array($parameterArray[$paramName])) {
 			$param = array_map('addslashes', $parameterArray[$paramName]);
-		} else {
+		} else if (isset($parameterArray[$paramName]) && $parameterArray[$paramName]) {
 			$param = addslashes($parameterArray[$paramName]);
 		}
 	} else {
@@ -476,34 +486,33 @@ function vtws_getModuleHandlerFromId($id,$user){
 }
 
 function vtws_CreateCompanyLogoFile($fieldname) {
-	global $root_directory;
-	$uploaddir = $root_directory ."/test/logo/";
-	$allowedFileTypes = array("jpeg", "png", "jpg", "pjpeg" ,"x-png");
-	$binFile = $_FILES[$fieldname]['name'];
-	$fileType = $_FILES[$fieldname]['type'];
-	$fileSize = $_FILES[$fieldname]['size'];
-	$fileTypeArray = explode("/",$fileType);
-	$fileTypeValue = strtolower($fileTypeArray[1]);
-	if($fileTypeValue == '') {
-		$fileTypeValue = substr($binFile,strrpos($binFile, '.')+1);
-	}
-	if($fileSize != 0) {
-		if(in_array($fileTypeValue, $allowedFileTypes)) {
-			move_uploaded_file($_FILES[$fieldname]["tmp_name"],
-					$uploaddir.$_FILES[$fieldname]["name"]);
-			copy($uploaddir.$_FILES[$fieldname]["name"], $uploaddir.'application.ico');
-			return $binFile;
-		}
-		throw new WebServiceException(WebServiceErrorCode::$INVALIDTOKEN,
-			"$fieldname wrong file type given for upload");
-	}
-	throw new WebServiceException(WebServiceErrorCode::$INVALIDTOKEN,
-			"$fieldname file upload failed");
+    $fileSize = $_FILES[$fieldname]['size'];
+    if($fileSize != 0) {
+        global $root_directory;
+        //Support formats allowed to upload as per CRM UI.
+        $logoSupportedFormats = array('jpeg', 'jpg', 'png', 'gif', 'pjpeg', 'x-png');
+        
+        $file_type_details = explode("/", $_FILES[$fieldname]['type']);
+        $filetype = $file_type_details['1'];
+        if(in_array($filetype, $logoSupportedFormats)) {
+            $uploaddir = $root_directory ."/test/logo/";
+            $binFile = $_FILES[$fieldname]['name'];
+            $saveLogo = validateImageFile($_FILES[$fieldname]);
+            if($saveLogo) {
+                move_uploaded_file($_FILES[$fieldname]["tmp_name"], $uploaddir.$binFile);
+                copy($uploaddir.$binFile, $uploaddir.'application.ico');
+                return $binFile;
+            }
+        }
+        throw new WebServiceException(WebServiceErrorCode::$FAILED_TO_UPDATE,
+            "$fieldname wrong file type given for upload");
+    }
+    throw new WebServiceException(WebServiceErrorCode::$FAILED_TO_UPDATE, "$fieldname file upload failed");
 }
 
 function vtws_getActorEntityName ($name, $idList) {
 	$db = PearDatabase::getInstance();
-	if (!is_array($idList) && count($idList) == 0) {
+	if (!is_array($idList) && php7_count($idList) == 0) {
 		return array();
 	}
 	$entity = VtigerWebserviceObject::fromName($db, $name);
@@ -512,7 +521,7 @@ function vtws_getActorEntityName ($name, $idList) {
 
 function vtws_getActorEntityNameById ($entityId, $idList) {
 	$db = PearDatabase::getInstance();
-	if (!is_array($idList) && count($idList) == 0) {
+	if (!is_array($idList) && php7_count($idList) == 0) {
 		return array();
 	}
 	$nameList = array();
@@ -694,7 +703,7 @@ function vtws_getFieldfromFieldId($fieldId, $fieldObjectList){
  */
 function vtws_getRelatedActivities($leadId,$accountId,$contactId,$relatedId) {
 
-	if(empty($leadId) || empty($relatedId) || (empty($accountId) && empty($contactId))){
+	if(empty($leadId) || empty($relatedId) || empty($contactId)){
 		throw new WebServiceException(WebServiceErrorCode::$LEAD_RELATED_UPDATE_FAILED,
 			"Failed to move related Activities/Emails");
 	}
@@ -918,7 +927,7 @@ function vtws_updateWebformsRoundrobinUsersLists($ownerId, $newOwnerId) {
 					}
 					$usersList = $revisedUsersList;
 				}
-				if (count($usersList) == 0) {
+				if (php7_count($usersList) == 0) {
 					$db->pquery('UPDATE vtiger_webforms SET roundrobin_userid = ?,roundrobin = ? where id =?', array("--None--", 0, $webformId));
 				} else {
 					$usersList = json_encode($usersList);
@@ -962,7 +971,7 @@ function vtws_transferOwnershipForWorkflowTasks($ownerModel, $newOwnerModel) {
 		require_once("modules/com_vtiger_workflow/VTTaskManager.inc");
 		require_once 'modules/com_vtiger_workflow/tasks/'.$className.'.inc';
 		$unserializeTask = unserialize($task);
-		if(array_key_exists("field_value_mapping",$unserializeTask)) {
+		if(property_exists($unserializeTask, "field_value_mapping")) {
 			$fieldMapping = Zend_Json::decode($unserializeTask->field_value_mapping);
 			if (!empty($fieldMapping)) {
 				foreach ($fieldMapping as $key => $condition) {
@@ -985,7 +994,7 @@ function vtws_transferOwnershipForWorkflowTasks($ownerModel, $newOwnerModel) {
 			}
 		} else {
 			//For VTCreateTodoTask and VTCreateEventTask
-			if(array_key_exists('assigned_user_id', $unserializeTask)){
+			if(property_exists($unserializeTask, 'assigned_user_id')){
 				$value = $unserializeTask->assigned_user_id;
 				if($value == $ownerId) {
 					$unserializeTask->assigned_user_id = $newOwnerId;
@@ -1271,7 +1280,7 @@ function vtws_getCompanyId() {
 
 function vtws_recordExists($recordId) {
 	$ids = vtws_getIdComponents($recordId);
-	return !Vtiger_Util_Helper::CheckRecordExistance($ids[1]);
+	return isset($ids[1]) ? !Vtiger_Util_Helper::CheckRecordExistance($ids[1]) : null;
 }
 
 function vtws_isDuplicatesAllowed($webserviceObject){

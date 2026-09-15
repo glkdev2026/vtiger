@@ -756,7 +756,7 @@ class Accounts extends CRMEntity {
 				LEFT OUTER JOIN vtiger_quotes ON vtiger_quotes.quoteid = vtiger_salesorder.quoteid
 				LEFT OUTER JOIN vtiger_account ON vtiger_account.accountid = vtiger_salesorder.accountid
 				LEFT JOIN vtiger_groups ON vtiger_groups.groupid = vtiger_crmentity.smownerid
-                LEFT JOIN vtiger_invoice_recurring_info ON vtiger_invoice_recurring_info.start_period = vtiger_salesorder.salesorderid
+                LEFT JOIN vtiger_invoice_recurring_info ON vtiger_invoice_recurring_info.salesorderid = vtiger_salesorder.salesorderid
                 LEFT JOIN vtiger_salesordercf ON vtiger_salesordercf.salesorderid = vtiger_salesorder.salesorderid
 				LEFT JOIN vtiger_sobillads ON vtiger_sobillads.sobilladdressid = vtiger_salesorder.salesorderid
 				LEFT JOIN vtiger_soshipads ON vtiger_soshipads.soshipaddressid = vtiger_salesorder.salesorderid
@@ -967,7 +967,7 @@ class Accounts extends CRMEntity {
 			$profileList = getCurrentUserProfileList();
 			$sql1 = "select vtiger_field.fieldid,fieldlabel from vtiger_field INNER JOIN vtiger_profile2field on vtiger_profile2field.fieldid=vtiger_field.fieldid inner join vtiger_def_org_field on vtiger_def_org_field.fieldid=vtiger_field.fieldid where vtiger_field.tabid=6 and vtiger_field.displaytype in (1,2,4) and vtiger_profile2field.visible=0 and vtiger_def_org_field.visible=0 and vtiger_field.presence in (0,2)";
 			$params1 = array();
-			if (count($profileList) > 0) {
+			if (php7_count($profileList) > 0) {
 				$sql1 .= " and vtiger_profile2field.profileid in (". generateQuestionMarks($profileList) .")  group by fieldid";
 			    array_push($params1,  $profileList);
 			}
@@ -993,7 +993,7 @@ class Accounts extends CRMEntity {
 	 */
 	function transferRelatedRecords($module, $transferEntityIds, $entityId) {
 		global $adb,$log;
-		$log->debug("Entering function transferRelatedRecords ($module, $transferEntityIds, $entityId)");
+		$log->debug("Entering function transferRelatedRecords ($module, ".implode(',',$transferEntityIds).", $entityId)");
 
 		$rel_table_arr = Array("Contacts"=>"vtiger_contactdetails","Potentials"=>"vtiger_potential","Quotes"=>"vtiger_quotes",
 					"SalesOrder"=>"vtiger_salesorder","Invoice"=>"vtiger_invoice","Activities"=>"vtiger_seactivityrel",
@@ -1434,18 +1434,18 @@ class Accounts extends CRMEntity {
 		$list_buttons = Array();
 
 		if(isPermitted('Accounts','Delete','') == 'yes') {
-			$list_buttons['del'] = $app_strings[LBL_MASS_DELETE];
+			$list_buttons['del'] = $app_strings["LBL_MASS_DELETE"];
 		}
 		if(isPermitted('Accounts','EditView','') == 'yes') {
-			$list_buttons['mass_edit'] = $app_strings[LBL_MASS_EDIT];
-			$list_buttons['c_owner'] = $app_strings[LBL_CHANGE_OWNER];
+			$list_buttons['mass_edit'] = $app_strings["LBL_MASS_EDIT"];
+			$list_buttons['c_owner'] = $app_strings["LBL_CHANGE_OWNER"];
 		}
 		if(isPermitted('Emails','EditView','') == 'yes') {
-			$list_buttons['s_mail'] = $app_strings[LBL_SEND_MAIL_BUTTON];
+			$list_buttons['s_mail'] = $app_strings["LBL_SEND_MAIL_BUTTON"];
 		}
 		// mailer export
 		if(isPermitted('Accounts','Export','') == 'yes') {
-			$list_buttons['mailer_exp'] = $mod_strings[LBL_MAILER_EXPORT];
+			$list_buttons['mailer_exp'] = $mod_strings["LBL_MAILER_EXPORT"];
 		}
 		// end of mailer export
 		return $list_buttons;
@@ -1646,6 +1646,7 @@ class Accounts extends CRMEntity {
 		$singular_modname = 'SINGLE_' . $related_module;
 
 		$button = '';
+		$query  = '';
 		if ($actions) {
 			if (is_string($actions))
 				$actions = explode(',', strtoupper($actions));

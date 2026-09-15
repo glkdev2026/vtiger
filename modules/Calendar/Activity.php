@@ -133,7 +133,7 @@ class Activity extends CRMEntity {
 			$adb->pquery( 'DELETE from vtiger_cntactivityrel WHERE activityid = ?', array($recordId));
 
 			$contactIdsList = explode (';', $_REQUEST['contactidlist']);
-			$count = count($contactIdsList);
+			$count = php7_count($contactIdsList);
             $params=array();
 			$sql = 'INSERT INTO vtiger_cntactivityrel VALUES ';
 			for($i=0; $i<$count; $i++) {
@@ -145,7 +145,7 @@ class Activity extends CRMEntity {
 				}
 			}
 			$adb->pquery($sql, $params);
-		} else if ($_REQUEST['contactidlist'] == '' && $insertion_mode == "edit") {
+		} else if (isset($_REQUEST['contactidlist'] ) && $_REQUEST['contactidlist'] == '' && $insertion_mode == "edit") {
 			$adb->pquery('DELETE FROM vtiger_cntactivityrel WHERE activityid = ?', array($recordId));
 		}
 
@@ -180,7 +180,7 @@ class Activity extends CRMEntity {
 			$this->insertIntoReminderTable('vtiger_activity_reminder',$module,"");
 
 		//Handling for invitees
-			$selected_users_string =  $_REQUEST['inviteesid'];
+			$selected_users_string = isset($_REQUEST['inviteesid'])?$_REQUEST['inviteesid']:'';
 			$invitees_array = explode(';',$selected_users_string);
 			$this->insertIntoInviteeTable($module,$invitees_array);
 
@@ -242,7 +242,7 @@ class Activity extends CRMEntity {
 			} else {
 				$status = 1;
 			}
-
+			$callback_query='';
 			if(isset($reminderid)) {
 				$callback_query = "UPDATE vtiger_activity_reminder_popup set status = ?, date_start = ?, time_start = ? WHERE reminderid = ?";
 				$callback_params = array($status, $cbdate, $cbtime, $reminderid);
@@ -264,7 +264,7 @@ class Activity extends CRMEntity {
 	{
 		global $log;
 		$log->info("in insertIntoReminderTable  ".$table_name."    module is  ".$module);
-		if($_REQUEST['set_reminder'] == 'Yes')
+		if(isset($_REQUEST['set_reminder']) && $_REQUEST['set_reminder'] == 'Yes')
 		{
 			unset($_SESSION['next_reminder_time']);
 			$log->debug("set reminder is set");
@@ -292,7 +292,7 @@ class Activity extends CRMEntity {
 				$this->activity_reminder($this->id,$reminder_time,0,$recurid,'');
 			}
 		}
-		elseif($_REQUEST['set_reminder'] == 'No')
+		elseif(isset($_REQUEST['set_reminder']) && $_REQUEST['set_reminder'] == 'No')
 		{
 			$this->activity_reminder($this->id,'0',0,$recurid,'delete');
 		}
@@ -386,7 +386,7 @@ function insertIntoRecurringTable(& $recurObj)
 	function insertIntoInviteeTable($module,$invitees_array)
 	{
 		global $log,$adb;
-		$log->debug("Entering insertIntoInviteeTable(".$module.",".$invitees_array.") method ...");
+		$log->debug("Entering insertIntoInviteeTable(".$module.",".implode(',',$invitees_array).") method ...");
 		if($this->mode == 'edit'){
 			$sql = "DELETE FROM vtiger_invitees WHERE activityid=?";
 			$adb->pquery($sql, array($this->id));
@@ -705,7 +705,7 @@ function insertIntoRecurringTable(& $recurObj)
 					}
 				}
 
-				$task[contact_name] = return_name($row, 'cfn', 'cln');
+				$task["contact_name"] = return_name($row, 'cfn', 'cln');
 
 					$list[] = $task;
 				}
@@ -730,7 +730,7 @@ function insertIntoRecurringTable(& $recurObj)
 	 * @param  integer   $recurid         - recuring eventid
 	 * @param  string    $remindermode    - string like 'edit'
 	 */
-	function activity_reminder($activity_id,$reminder_time,$reminder_sent=0,$recurid,$remindermode='')
+	function activity_reminder($activity_id,$reminder_time,$reminder_sent=0,$recurid=0,$remindermode='')
 	{
 		global $log;
 		$log->debug("Entering vtiger_activity_reminder(".$activity_id.",".$reminder_time.",".$reminder_sent.",".$recurid.",".$remindermode.") method ...");
@@ -787,7 +787,7 @@ function insertIntoRecurringTable(& $recurObj)
 		$profileList = getCurrentUserProfileList();
 		$sql1 = "select tablename,columnname from vtiger_field inner join vtiger_profile2field on vtiger_profile2field.fieldid=vtiger_field.fieldid inner join vtiger_def_org_field on vtiger_def_org_field.fieldid=vtiger_field.fieldid where vtiger_field.tabid=9 and tablename <> 'vtiger_recurringevents' and tablename <> 'vtiger_activity_reminder' and vtiger_field.displaytype in (1,2,4,3) and vtiger_profile2field.visible=0 and vtiger_def_org_field.visible=0 and vtiger_field.presence in (0,2)";
 		$params1 = array();
-		if (count($profileList) > 0) {
+		if (php7_count($profileList) > 0) {
 			$sql1 .= " and vtiger_profile2field.profileid in (". generateQuestionMarks($profileList) .")";
 			array_push($params1, $profileList);
 		}
@@ -805,7 +805,7 @@ function insertIntoRecurringTable(& $recurObj)
 		}
 		$permitted_lists = array_chunk($permitted_lists,2);
 		$column_table_lists = array();
-		for($i=0;$i < count($permitted_lists);$i++)
+		for($i=0;$i < php7_count($permitted_lists);$i++)
 		{
 			$column_table_lists[] = implode(".",$permitted_lists[$i]);
 		}
@@ -846,7 +846,7 @@ function insertIntoRecurringTable(& $recurObj)
 			$profileList = getCurrentUserProfileList();
 			$sql1 = "select tablename,columnname from vtiger_field inner join vtiger_profile2field on vtiger_profile2field.fieldid=vtiger_field.fieldid inner join vtiger_def_org_field on vtiger_def_org_field.fieldid=vtiger_field.fieldid where vtiger_field.tabid=9 and tablename <> 'vtiger_recurringevents' and tablename <> 'vtiger_activity_reminder' and vtiger_field.displaytype in (1,2,4,3) and vtiger_profile2field.visible=0 and vtiger_def_org_field.visible=0 and vtiger_field.presence in (0,2)";
 			$params1 = array();
-			if (count($profileList) > 0) {
+			if (php7_count($profileList) > 0) {
 				$sql1 .= " and vtiger_profile2field.profileid in (". generateQuestionMarks($profileList) .")";
 				array_push($params1,$profileList);
 			}
@@ -869,7 +869,7 @@ function insertIntoRecurringTable(& $recurObj)
 		}
 		$permitted_lists = array_chunk($permitted_lists,2);
 		$column_table_lists = array();
-		for($i=0;$i < count($permitted_lists);$i++)
+		for($i=0;$i < php7_count($permitted_lists);$i++)
 		{
 			$column_table_lists[] = implode(".",$permitted_lists[$i]);
 		}

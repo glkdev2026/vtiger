@@ -67,7 +67,7 @@
 	<div class="commentsBody">
 		{if !empty($COMMENTS)}
 			<div class="recentCommentsBody container-fluid">
-				{assign var=COMMENTS_COUNT value=count($COMMENTS)}
+				{assign var=COMMENTS_COUNT value=php7_count($COMMENTS)}
 				{foreach key=index item=COMMENT from=$COMMENTS}
 					{assign var=CREATOR_NAME value={decode_html($COMMENT->getCommentedByName())}}
 					<div class="commentDetails">
@@ -232,8 +232,8 @@
 		</div>
 	</div>
 
-	<div class="hide basicEditCommentBlock container-fluid" style="min-height: 150px;">
-		<div class="row commentArea" >
+	<div class="hide basicEditCommentBlock container-fluid">
+		<div class="row commentArea" style="padding-bottom: 10px" >
 			<input style="width:100%;height:30px;" type="text" name="reasonToEdit" placeholder="{vtranslate('LBL_REASON_FOR_CHANGING_COMMENT', $MODULE_NAME)}" class="input-block-level"/>
 		</div>
 		<div class="row" style="padding-bottom: 10px;">
@@ -242,9 +242,11 @@
 			</div>
 		</div>
 		<input type="hidden" name="is_private">
-		<div class="pull-right row">
-			<button class="btn btn-success btn-sm detailViewSaveComment" type="button" data-mode="edit">{vtranslate('LBL_POST', $MODULE_NAME)}</button>
-			<a href="javascript:void(0);" class="cursorPointer closeCommentBlock cancelLink" type="reset">{vtranslate('LBL_CANCEL', $MODULE_NAME)}</a>
+		<div class="row" style="padding-bottom: 10px;">
+			<div class="pull-right">
+				<button class="btn btn-success btn-sm detailViewSaveComment" type="button" data-mode="edit">{vtranslate('LBL_POST', $MODULE_NAME)}</button>
+				<a href="javascript:void(0);" class="cursorPointer closeCommentBlock cancelLink" type="reset">{vtranslate('LBL_CANCEL', $MODULE_NAME)}</a>
+			</div>
 		</div>
 	</div>
 </div>

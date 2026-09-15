@@ -19,6 +19,10 @@ class VtigerInventoryOperation extends VtigerModuleOperation {
 
 	public function create($elementType, $element) {
 		self::$CREATE_OPERATI0N = true;
+		
+		if (!$element['hdnTaxType']) {
+			$element['hdnTaxType'] = Inventory_TaxRecord_Model::getSelectedDefaultTaxMode();
+		}
 		$element = $this->sanitizeInventoryForInsert($element);
 		$element = $this->sanitizeShippingTaxes($element);
 		$lineItems = $element['LineItems'];
@@ -164,14 +168,20 @@ class VtigerInventoryOperation extends VtigerModuleOperation {
 			vglobal('updateInventoryProductRel_deduct_stock', $currentValue);
 		} else {
 			$prevAction = $_REQUEST['action'];
+			$prevAjaxAction = $_REQUEST['ajxaction'];
+			
 			// This is added as we are passing data in user format, so in the crmentity insertIntoEntity API
 			// should convert to database format, we have added a check based on the action name there. But
 			// while saving Invoice and Purchase Order we are also depending on the same action file names to
 			// not to update stock if its an ajax save. In this case also we do not want line items to change.
 			$_REQUEST['action'] = 'FROM_WS';
-
+			
+			//To avoid deletion of lineitems we use the ajaxaction DETAILVIEW as if we were updating signle fields from the detail view:
+			$_REQUEST['ajxaction'] = 'DETAILVIEW'; 
+			
 			$parent = parent::revise($element);
 			$_REQUEST['action'] = $prevAction;
+			$_REQUEST['ajxaction'] = $prevAjaxAction;
 			$parent['LineItems'] = $handler->getAllLineItemForParent($parentId);
 		}
 		return array_merge($element,$parent);
@@ -194,7 +204,7 @@ class VtigerInventoryOperation extends VtigerModuleOperation {
 		$element['LineItems'] = $lineItems;
 		$recordCompoundTaxesElement = $this->getCompoundTaxesElement($element, $lineItems);
 		$element = array_merge($element, $recordCompoundTaxesElement);
-		$element['productid'] = $lineItems[0]['productid'];
+		$element['productid'] = isset($lineItems[0]['productid']) ? $lineItems[0]['productid'] : "";
 		$element['LineItems_FinalDetails'] = $this->getLineItemFinalDetails($idComponents[1]);
 		return $element;
 	}
@@ -223,10 +233,6 @@ class VtigerInventoryOperation extends VtigerModuleOperation {
 	 * @return type
 	 */
 	protected function sanitizeInventoryForInsert($element) {
-
-		if (!$element['hdnTaxType']) {
-			$element['hdnTaxType'] = Inventory_TaxRecord_Model::getSelectedDefaultTaxMode();
-		}
 
 		if (!empty($element['hdnTaxType'])) {
 			$_REQUEST['taxtype'] = $element['hdnTaxType'];
@@ -266,7 +272,7 @@ class VtigerInventoryOperation extends VtigerModuleOperation {
 		}
 
 		$lineItems = $element['LineItems'];
-		$totalNoOfProducts = count($lineItems);
+		$totalNoOfProducts = php7_count($lineItems);
 		$_REQUEST['totalProductCount'] = $totalNoOfProducts;
 		$_REQUEST['REQUEST_FROM_WS'] = true;
 
@@ -474,7 +480,7 @@ class VtigerInventoryOperation extends VtigerModuleOperation {
 			$result = $this->pearDB->pquery('SELECT * FROM vtiger_inventorychargesrel WHERE recordid = ?', array($id));
 			$rowData = $this->pearDB->fetch_array($result);
 
-			if ($rowData['charges']) {
+			if (isset($rowData['charges']) && $rowData['charges']) {
 				$allCharges = getAllCharges();
 				$shippingTaxes = array();
 				$allShippingTaxes = getAllTaxes('all', 'sh');

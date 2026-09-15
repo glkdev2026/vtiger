@@ -20,6 +20,7 @@ require_once ('modules/Accounts/Accounts.php');
 /**
  * Mail Scanner Action
  */
+#[\AllowDynamicProperties]
 class Vtiger_MailScannerAction {
 	// actionid for this instance
 	var $actionid	= false;
@@ -148,6 +149,17 @@ class Vtiger_MailScannerAction {
 				$returnid = $this->__UpdateTicket($mailscanner, $mailrecord, $mailscannerrule->hasRegexMatch($matchresult),$mailscannerrule);
 			}
 		}
+		else if (!empty($this->actiontype)) {
+            $action = $this;
+
+            $params = array($action,$mailscanner, $mailrecord, $mailscannerrule);
+            require 'modules/Settings/MailConverter/handlers/MailScannerEntityMethodManager.inc';
+            global $adb;
+            $emm = new MailScannerEntityMethodManager($adb);
+
+            $returnid = $emm->executeMethod($this->module,$this->actiontype, $params);
+
+        }
 		return $returnid;
 	}
 
@@ -435,7 +447,7 @@ class Vtiger_MailScannerAction {
 		$focus->column_fields["email_flag"] = 'MAILSCANNER';
 
 		$from=$mailrecord->_from[0];
-		$to = $mailrecord->_to[0];
+		$to = isset($mailrecord->_to[0]) ? $mailrecord->_to[0] : '';
 		$cc = (!empty($mailrecord->_cc))? implode(',', $mailrecord->_cc) : '';
 		$bcc= (!empty($mailrecord->_bcc))? implode(',', $mailrecord->_bcc) : '';
 		$flag=''; // 'SENT'/'SAVED'
@@ -537,8 +549,8 @@ class Vtiger_MailScannerAction {
 
 		$mimetype = MailAttachmentMIME::detect($saveasfile);
 
-		$adb->pquery("INSERT INTO vtiger_attachments SET attachmentsid=?, name=?, description=?, type=?, path=?",
-			Array($attachid, $filename, $description, $mimetype, $dirname));
+		$adb->pquery("INSERT INTO vtiger_attachments SET attachmentsid=?, name=?, description=?, type=?, storedname=?, path=?",
+			Array($attachid, $filename, $description, $mimetype, $filename, $dirname));
 
 		return true;
 	}
@@ -570,7 +582,7 @@ class Vtiger_MailScannerAction {
 		$name = $mailrecord->_fromname;
 		if(!empty($name)) {
 			$nameParts = explode(' ', $name);
-			if(count($nameParts) > 1) {
+			if(php7_count($nameParts) > 1) {
 				$firstName = $nameParts[0];
 				unset($nameParts[0]);
 				$lastName = implode(' ', $nameParts);

@@ -21,7 +21,7 @@
                     <input type="hidden" name="reports_description" value="{$REPORT_MODEL->get('reports_description')}" />
                     <input type="hidden" name="primary_module" value="{$PRIMARY_MODULE}" />
                     <input type="hidden" name="secondary_modules" value={ZEND_JSON::encode($SECONDARY_MODULES)} />
-                    <input type="hidden" name="advanced_filter" id="advanced_filter" value={ZEND_JSON::encode($ADVANCED_FILTERS)} />
+                    <input type="hidden" name="advanced_filter" id="advanced_filter" value={if isset($ADVANCED_FILTERS)}{ZEND_JSON::encode($ADVANCED_FILTERS)}{else}''{/if} />
                     <input type="hidden" name='groupbyfield' value={$CHART_MODEL->getGroupByField()} />
                     <input type="hidden" name='datafields' value={Zend_JSON::encode($CHART_MODEL->getDataFields())} />
                     <input type="hidden" name='charttype' value="{$CHART_MODEL->getChartType()}" />
@@ -31,7 +31,7 @@
                     {foreach key=BLOCK_LABEL item=BLOCK_FIELDS from=$PRIMARY_MODULE_RECORD_STRUCTURE}
                         {assign var=PRIMARY_MODULE_BLOCK_LABEL value=vtranslate($BLOCK_LABEL, $PRIMARY_MODULE)}
                         {assign var=key value="$PRIMARY_MODULE_LABEL $PRIMARY_MODULE_BLOCK_LABEL"}
-                        {if $LINEITEM_FIELD_IN_CALCULATION eq false && $BLOCK_LABEL eq 'LBL_ITEM_DETAILS'}
+                        {if isset($LINEITEM_FIELD_IN_CALCULATION) && $LINEITEM_FIELD_IN_CALCULATION eq false && $BLOCK_LABEL eq 'LBL_ITEM_DETAILS'}
                             {* dont show the line item fields block when Inventory fields are selected for calculations *}
                         {else}
                             {$RECORD_STRUCTURE[$key] = $BLOCK_FIELDS}
@@ -70,7 +70,7 @@
                         </div>
                     </div>
                     <div>
-                        {assign var=filterConditionNotExists value=(count($SELECTED_ADVANCED_FILTER_FIELDS[1]['columns']) eq 0 and count($SELECTED_ADVANCED_FILTER_FIELDS[2]['columns']) eq 0)}
+                        {assign var=filterConditionNotExists value=(php7_count($SELECTED_ADVANCED_FILTER_FIELDS[1]['columns']) eq 0 and php7_count($SELECTED_ADVANCED_FILTER_FIELDS[2]['columns']) eq 0)}
                         <button class="btn btn-default" name="modify_condition" data-val="{$filterConditionNotExists}">
                             <strong>{vtranslate('LBL_MODIFY_CONDITION', $MODULE)}</strong>&nbsp;&nbsp;
                             <i class="fa {if $filterConditionNotExists eq true}fa-chevron-right{else}fa-chevron-down{/if}"></i>

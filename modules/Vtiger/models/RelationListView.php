@@ -47,7 +47,7 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 		$parentRecordModule = $this->getParentRecordModel();
 		$parentModule = $parentRecordModule->getModule();
 
-		$createViewUrl = $relatedModel->getCreateRecordUrl().'&returnmode=showRelatedList&returntab_label='.$this->tab_label.
+		$createViewUrl = $relatedModel->getCreateRecordUrl().'&returnmode=showRelatedList&returntab_label='. (isset($this->tab_label)? $this->tab_label:"").
 							'&returnrecord='.$parentRecordModule->getId().'&returnmodule='.$parentModule->getName().
 							'&returnview=Detail&returnrelatedModuleName='.$this->getRelatedModuleModel()->getName().
 							'&returnrelationId='.$relationModel->getId();
@@ -254,7 +254,7 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 		$relationModule = $this->getRelationModel()->getRelationModuleModel();
 		$relationModuleName = $relationModule->get('name');
 		$relatedColumnFields = $relationModule->getConfigureRelatedListFields();
-		if(count($relatedColumnFields) <= 0){
+		if(php7_count($relatedColumnFields) <= 0){
 			$relatedColumnFields = $relationModule->getRelatedListFields();
 		}
 
@@ -274,23 +274,23 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 
 		if ($this->get('whereCondition') && is_array($this->get('whereCondition'))) {
 			$currentUser = Users_Record_Model::getCurrentUserModel();
-			$queryGenerator = new QueryGenerator($relationModuleName, $currentUser);
+			$queryGenerator = new EnhancedQueryGenerator($relationModuleName, $currentUser);
 			$queryGenerator->setFields(array_values($relatedColumnFields));
 			$whereCondition = $this->get('whereCondition');
 			foreach ($whereCondition as $fieldName => $fieldValue) {
 				if (is_array($fieldValue)) {
 					$comparator = $fieldValue[1];
 					$searchValue = $fieldValue[2];
-					$type = $fieldValue[3];
+					$type = isset($fieldValue[3])?$fieldValue[3]:'';
 					if ($type == 'time') {
 						$searchValue = Vtiger_Time_UIType::getTimeValueWithSeconds($searchValue);
 					}
 					$queryGenerator->addCondition($fieldName, $searchValue, $comparator, "AND");
 				}
 			}
-			$whereQuerySplit = split("WHERE", $queryGenerator->getWhereClause());
+			$whereQuerySplit = explode("WHERE", $queryGenerator->getWhereClause());
 			if($parentModuleName == 'Accounts' && $relationModuleName == 'Calendar' && (stripos($query, "GROUP BY") !== false)) {
-                            $splitQuery = split('GROUP BY', $query);
+                            $splitQuery = explode('GROUP BY', $query);
                             $query = $splitQuery[0]." AND ".$whereQuerySplit[1].' GROUP BY '.$splitQuery[1];
                         } else {
                             $query.=" AND " . $whereQuerySplit[1];
@@ -331,7 +331,7 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 				}
 				$query = "$query ORDER BY $qualifiedOrderBy $sortOrder";
 			}
-		} else if($relationModuleName == 'HelpDesk' && empty($orderBy) && empty($sortOrder) && $moduleName != "Users") {
+		} else if(empty($orderBy) && empty($sortOrder) && $relationModuleName != "Users") {
 			$query .= ' ORDER BY vtiger_crmentity.modifiedtime DESC';
 		}
 
@@ -350,8 +350,10 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 				}
 			}
 			//To show the value of "Assigned to"
+			if(isset($row['smownerid'])){
 			$ownerId = $row['smownerid'];
 			$newRow['assigned_user_id'] = $row['smownerid'];
+			}
 			if($relationModuleName == 'Calendar') {
 				$visibleFields = array('activitytype','date_start','time_start','due_date','time_end','assigned_user_id','visibility','smownerid','parent_id');
 				$visibility = true;
@@ -392,7 +394,7 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 			$pagingModel->set('nextPageExists', false);
 		}
 		//setting related list view count before unsetting permission denied records - to make sure paging should not fail
-		$pagingModel->set('_relatedlistcount', count($relatedRecordList));
+		$pagingModel->set('_relatedlistcount', php7_count($relatedRecordList));
 		foreach($recordsToUnset as $record) {
 			unset($relatedRecordList[$record]);
 		}
@@ -407,7 +409,7 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 		$summaryFieldsList = $relatedModuleModel->getHeaderAndSummaryViewFieldsList();
 
 		$headerFields = array();
-		if(count($summaryFieldsList) > 0) {
+		if(php7_count($summaryFieldsList) > 0) {
 			foreach($summaryFieldsList as $fieldName => $fieldModel) {
 				$headerFields[$fieldName] = $fieldModel;
 			}
@@ -420,7 +422,7 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 
 		$nameFields = $relatedModuleModel->getNameFields();
 		foreach($nameFields as $fieldName){
-			if(!$headerFields[$fieldName]) {
+			if(!isset($headerFields[$fieldName]) || !$headerFields[$fieldName]) {
 				$headerFields[$fieldName] = $relatedModuleModel->getField($fieldName);
 			}
 		}
@@ -517,7 +519,7 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 		$position = stripos($relationQuery,' from ');
 		if ($position) {
 			$split = preg_split('/ FROM /i', $relationQuery);
-			$splitCount = count($split);
+			$splitCount = php7_count($split);
 			if($relatedModuleName == 'Calendar') {
 				$relationQuery = 'SELECT DISTINCT vtiger_crmentity.crmid, vtiger_activity.activitytype ';
 			} else {
@@ -562,7 +564,7 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 		$condition = '';
 
 		$whereCondition = $this->get("whereCondition");
-		$count = count($whereCondition);
+		$count = php7_count($whereCondition);
 		if ($count > 1) {
 			$appendAndCondition = true;
 		}
@@ -596,7 +598,7 @@ class Vtiger_RelationListView_Model extends Vtiger_Base_Model {
 		return $updatedQuery;
 	}
 
-	public function getCurrencySymbol($recordId, $fieldModel) {
+	public static function getCurrencySymbol($recordId, $fieldModel) {
 		$db = PearDatabase::getInstance();
 		$moduleName = $fieldModel->getModuleName();
 		$fieldName = $fieldModel->get('name');

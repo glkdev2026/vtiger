@@ -81,7 +81,7 @@
                             {if $FIELD_MODEL->isMandatory() eq true && $isReferenceField neq "reference"} <span class="redColor">*</span> {/if}
                             {if $isReferenceField eq "reference"}
                                 {assign var="REFERENCE_LIST" value=$FIELD_MODEL->getReferenceList()}
-                                {assign var="REFERENCE_LIST_COUNT" value=count($REFERENCE_LIST)}
+                                {assign var="REFERENCE_LIST_COUNT" value=php7_count($REFERENCE_LIST)}
                                 {if $REFERENCE_LIST_COUNT > 1}
                                     {assign var="DISPLAYID" value=$FIELD_MODEL->get('fieldvalue')}
                                     {assign var="REFERENCED_MODULE_STRUCT" value=$FIELD_MODEL->getUITypeModel()->getReferenceModule($DISPLAYID)}
@@ -125,7 +125,7 @@
             {/if}
         {/foreach}
 		{* adding additional column for odd number of fields in a block *}
-		{if $BLOCK_FIELDS|@end eq true and $BLOCK_FIELDS|@count neq 1 and $COUNTER eq 1}
+		{if $smarty.foreach.EditViewBlockLevelLoop.last and $BLOCK_FIELDS|@count neq 1 and $COUNTER eq 1}
 			<td class="fieldLabel {$WIDTHTYPE}"></td><td class="{$WIDTHTYPE}"></td>
 		{/if}
     </tr>

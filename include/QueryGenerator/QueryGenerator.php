@@ -19,6 +19,7 @@ require_once 'include/Webservices/RelatedModuleMeta.php';
  *
  * @author MAK
  */
+#[\AllowDynamicProperties]
 class QueryGenerator {
 	protected $module;
 	protected $customViewColumnList;
@@ -52,6 +53,7 @@ class QueryGenerator {
 	public static $AND = 'AND';
 	public static $OR = 'OR';
 	protected $customViewFields;
+	protected $referenceModuleField;
 	/**
 	 * Import Feature
 	 */
@@ -222,12 +224,12 @@ class QueryGenerator {
 				$this->addCondition($name, $value, 'BETWEEN');
 			}
 		}
-		if($this->conditionInstanceCount <= 0 && is_array($this->advFilterList) && count($this->advFilterList) > 0) {
+		if($this->conditionInstanceCount <= 0 && is_array($this->advFilterList) && php7_count($this->advFilterList) > 0) {
 			$this->startGroup('');
-		} elseif($this->conditionInstanceCount > 0 && is_array($this->advFilterList) && count($this->advFilterList) > 0) {
+		} elseif($this->conditionInstanceCount > 0 && is_array($this->advFilterList) && php7_count($this->advFilterList) > 0) {
 			$this->addConditionGlue(self::$AND);
 		}
-		if(is_array($this->advFilterList) && count($this->advFilterList) > 0) {
+		if(is_array($this->advFilterList) && php7_count($this->advFilterList) > 0) {
 			$this->parseAdvFilterList($this->advFilterList);
 		}
 		if($this->conditionInstanceCount > 0) {
@@ -242,7 +244,7 @@ class QueryGenerator {
 		$dateSpecificConditions = $customView->getStdFilterConditions();
 		foreach ($advFilterList as $groupindex=>$groupcolumns) {
 			$filtercolumns = $groupcolumns['columns'];
-			if(count($filtercolumns) > 0) {
+			if(php7_count($filtercolumns) > 0) {
 				$this->startGroup('');
 				foreach ($filtercolumns as $index=>$filter) {
 					$nameComponents = explode(':',$filter['columnname']);
@@ -316,7 +318,7 @@ class QueryGenerator {
 						$value = array();
 						$value[] = $this->fixDateTimeValue($name, $date, false);
 						// Still fixDateTimeValue returns only date value, we need to append time because it is DT type
-						for($i=0;$i<count($value);$i++){
+						for($i=0;$i<php7_count($value);$i++){
 							$values = explode(' ', $value[$i]);
 							if($values[1] == ''){
 								$values[1] = '00:00:00';
@@ -569,7 +571,7 @@ class QueryGenerator {
 			}
 		}
 		$ownerFields = $this->meta->getOwnerFields();
-		if (count($ownerFields) > 0) {
+		if (php7_count($ownerFields) > 0) {
 			$ownerField = $ownerFields[0];
 		}
 		$baseTable = $this->meta->getEntityBaseTable();
@@ -705,12 +707,12 @@ class QueryGenerator {
 			$operator = strtolower($conditionInfo['operator']);
 			if($operator == 'between' && $this->isDateType($field->getFieldDataType())){
 				$start = explode(' ', $conditionInfo['value'][0]);
-				if(count($start) == 2)
+				if(php7_count($start) == 2)
 					$conditionInfo['value'][0] = getValidDBInsertDateTimeValue($start[0].' '.$start[1]);
 
 				$end = explode(' ', $conditionInfo['values'][1]);
 				// Dates will be equal for Today, Tomorrow, Yesterday.
-				if(count($end) == 2){
+				if(php7_count($end) == 2){
 					if($start[0] == $end[0]){
 						$dateTime = new DateTime($conditionInfo['value'][0]);
 						$nextDay = $dateTime->modify('+1 days');
@@ -748,7 +750,7 @@ class QueryGenerator {
 									$instance = CRMEntity::getInstance($module);
 									$referenceTable = $instance->table_name;
 									// PriceBook don't have any owner fields
-									if(count($this->ownerFields) > 0 ||
+									if(php7_count($this->ownerFields) > 0 ||
 											$this->getModule() == 'Quotes' || $this->getModule() == 'PriceBooks') {
 										$referenceTable .= $fieldName;
 									}
@@ -761,8 +763,14 @@ class QueryGenerator {
 								}
 								$columnList[] = "$referenceTable.$column";
 							}
-							if(count($columnList) > 1) {
-								$columnSql = getSqlForNameInDisplayFormat(array('first_name'=>$columnList[0],'last_name'=>$columnList[1]),'Users');
+							if(php7_count($columnList) > 1) {
+								if ($module == "Users") {
+									// Special case
+									$columnSql = getSqlForNameInDisplayFormat(array('first_name'=>$columnList[0],'last_name'=>$columnList[1]),'Users');
+								} else {
+									// Leads or contacts
+									$columnSql = getSqlForNameInDisplayFormat(array('firstname'=>$columnList[0],'lastname'=>$columnList[1]), $module);
+								}
 							} else {
 								$columnSql = implode('', $columnList);
 							}
@@ -798,7 +806,7 @@ class QueryGenerator {
 						$values = explode(',', $value);
 						$startDateValue = explode(' ', $values[0]);
 						$endDateValue = explode(' ', $values[1]);
-						if(count($startDateValue) == 2 && count($endDateValue) == 2) {
+						if(php7_count($startDateValue) == 2 && php7_count($endDateValue) == 2) {
 							$fieldSql .= " CONCAT($dateFieldColumnName,' ',$timeFieldColumnName) $valueSql";
 						} else {
 							$fieldSql .= "$dateFieldColumnName $valueSql";
@@ -808,7 +816,7 @@ class QueryGenerator {
 							$value = $value[0];
 						}
 						$values = explode(' ', $value);
-						if(count($values) == 2) {
+						if(php7_count($values) == 2) {
 								$fieldSql .= "$fieldGlue CONCAT($dateFieldColumnName,' ',$timeFieldColumnName) $valueSql ";
 						} else {
 								$fieldSql .= "$fieldGlue $dateFieldColumnName $valueSql";
@@ -986,7 +994,7 @@ class QueryGenerator {
 				if($this->isDateType($field->getFieldDataType())) {
 					$start = explode(' ', $valueArray[0]);
 					$end = explode(' ',$valueArray[1]);
-					if($operator == 'between' && count($start) == 2 && count($end) == 2){
+					if($operator == 'between' && php7_count($start) == 2 && php7_count($end) == 2){
 							$valueArray[0] = getValidDBInsertDateTimeValue($start[0].' '.$start[1]);
 
 							if($start[0] == $end[0]){
@@ -1004,12 +1012,12 @@ class QueryGenerator {
 					}else{
 						$valueArray[0] = getValidDBInsertDateTimeValue($valueArray[0]);
 						$dateTimeStart = explode(' ',$valueArray[0]);
-						if($dateTimeStart[1] == '00:00:00' && $operator != 'between' && $field->getFieldDataType()=='date') {
+						if(isset($dateTimeStart[1]) && $dateTimeStart[1] == '00:00:00' && $operator != 'between' && $field->getFieldDataType()=='date') {
 							$valueArray[0] = $dateTimeStart[0];
 						}
 						$valueArray[1] = getValidDBInsertDateTimeValue($valueArray[1]);
 						$dateTimeEnd = explode(' ', $valueArray[1]);
-						if(($dateTimeEnd[1] == '00:00:00' || $dateTimeEnd[1] == '23:59:59') && $field->getFieldDataType()=='date' ) {
+						if(isset($dateTimeEnd[1]) && ($dateTimeEnd[1] == '00:00:00' || $dateTimeEnd[1] == '23:59:59') && $field->getFieldDataType()=='date' ) {
 							$valueArray[1] = $dateTimeEnd[0];
 						}
 					}
@@ -1026,29 +1034,60 @@ class QueryGenerator {
 			return $sql;
 		}
 		foreach ($valueArray as $value) {
+			$isvaluefn = false; /* flag to use when value becomes a sql function */
+
 			if(!$this->isStringType($field->getFieldDataType())) {
 				$value = trim($value);
 			}
-			if ($operator == 'empty' || $operator == 'y') {
-				$sql[] = sprintf("IS NULL OR %s = ''", $this->getSQLColumn($field->getFieldName(), $field));
+			// If value is empty and comparator is equals then we have to check IS NULL (same as "is empty" condition)
+                        if ($operator == 'empty' || $operator == 'y') {
+                            $sqlFieldDataType = $field->getFieldDataType();
+                            if($sqlFieldDataType == 'date' || $sqlFieldDataType == 'birthday'){
+                                    $sqlFormat = sprintf("IS NULL OR %s = '0000-00-00'", $this->getSQLColumn($field->getFieldName(), $field));
+                            } else if($sqlFieldDataType == 'datetime'){
+                                    $sqlFormat = sprintf("IS NULL OR %s = '0000-00-00 00:00:00'", $this->getSQLColumn($field->getFieldName(), $field));
+                            } else {
+                                    $sqlFormat = sprintf("IS NULL OR %s = ''", $this->getSQLColumn($field->getFieldName(), $field));
+                            }
+                            $sql[] = $sqlFormat;
+                            continue;
+                        }
+			if ($operator == 'ny') {
+                            $sqlFieldDataType = $field->getFieldDataType();
+                            if ($sqlFieldDataType == 'date' || $sqlFieldDataType == 'birthday') {
+                                $sqlFormat = sprintf("IS NOT NULL AND %s != '0000-00-00'", $this->getSQLColumn($field->getFieldName(), $field));
+                            } else if ($sqlFieldDataType == 'datetime') {
+                                $sqlFormat = sprintf("IS NOT NULL AND %s != '0000-00-00 00:00:00'", $this->getSQLColumn($field->getFieldName(), $field));
+                            } else {
+                                $sqlFormat = sprintf("IS NOT NULL AND %s != ''", $this->getSQLColumn($field->getFieldName(), $field));
+                            }
+                            $sql[] = $sqlFormat;
+                            continue;
+                        }
+                        if ($operator == 'k') {
+				$sql[] = sprintf("IS NULL OR %s NOT LIKE '%%%s%%'", $this->getSQLColumn($field->getFieldName(), $field), $value);
 				continue;
 			}
-			if($operator == 'ny'){
-				$sql[] = sprintf("IS NOT NULL AND %s != ''", $this->getSQLColumn($field->getFieldName(), $field));
-				continue;
-			}
-			if((strtolower(trim($value)) == 'null') ||
-					(trim($value) == '' && !$this->isStringType($field->getFieldDataType())) &&
-							($operator == 'e' || $operator == 'n')) {
-				if($operator == 'e'){
-					$sql[] = "IS NULL";
-					$sql[] = "= ''";
-					continue;
-				} else {
-					$sql[] = "IS NOT NULL";
-					$sql[] = "!= ''";
-					continue;
-				}
+			$trimmedValue = is_array($value) ? NULL : trim($value);
+                        if((strtolower($trimmedValue) == 'null') ||
+                                ($trimmedValue == '' && !$this->isStringType($field->getFieldDataType())) &&
+                                ($operator == 'e' || $operator == 'n')) {
+                            if($operator == 'e'){
+                                $sql[] = "IS NULL";
+                                $sqlFieldDataType = $field->getFieldDataType();
+                                if($sqlFieldDataType == 'date' || $sqlFieldDataType == 'birthday'){
+                                        $sql[] = "= '0000-00-00'";
+                                } else if($sqlFieldDataType == 'datetime'){
+                                        $sql[] = "= '0000-00-00 00:00:00'";
+                                } else {
+                                        $sql[] = "= ''";
+                                }
+                                continue;
+                            } else {
+                                $sql[] = "IS NOT NULL";
+                                $sql[] = "!= ''";
+                                continue;
+                            }
 			} elseif($field->getFieldDataType() == 'boolean') {
 				$value = strtolower($value);
 				if ($value == 'yes') {
@@ -1059,7 +1098,7 @@ class QueryGenerator {
 			} elseif($this->isDateType($field->getFieldDataType())) {
 				// For "after" and "before" conditions
 				$values = explode(' ',$value);
-				if(($operator == 'a' || $operator == 'b') && count($values) == 2){
+				if(($operator == 'a' || $operator == 'b') && php7_count($values) == 2){
 					if($operator == 'a'){
 						// for after comparator we should check the date after the given
 						$dateTime = new DateTime($value);
@@ -1092,11 +1131,12 @@ class QueryGenerator {
 			}
 
 			if($field->getFieldName() == 'birthday' && !$this->isRelativeSearchOperators(
-					$operator)) {
-				$value = "DATE_FORMAT(".$db->quote($value).", '%m%d')";
-			} else {
-				$value = $db->sql_escape_string($value);
-			}
+                                $operator)) {
+                            $value = "DATE_FORMAT(".$db->quote($value).", '%m%d')";
+							$isvaluefn = true;
+                        } else {
+                            $value = is_array($value) ? NULL : $db->sql_escape_string($value);
+                        }
 
 			if(trim($value) == '' && ($operator == 's' || $operator == 'ew' || $operator == 'c')
 					&& ($this->isStringType($field->getFieldDataType()) ||
@@ -1126,9 +1166,6 @@ class QueryGenerator {
 				case 'c': $sqlOperator = "LIKE";
 					$value = "%$value%";
 					break;
-				case 'k': $sqlOperator = "NOT LIKE";
-					$value = "%$value%";
-					break;
 				case 'l': $sqlOperator = "<";
 					break;
 				case 'g': $sqlOperator = ">";
@@ -1149,14 +1186,32 @@ class QueryGenerator {
 				$sql[] = "IS NULL";
 			}
 
-			if( ($field->getFieldName() != 'birthday' || ($field->getFieldName() == 'birthday'
-							&& $this->isRelativeSearchOperators($operator)))){
-				$value = "'$value'";
-			}
+                        /**
+                         * While searching in decimal type columns, then value will be stored like 100.1234 (as float value).
+                         * When user search for 100 then also it should show up 100.1234 for which we are altering comparator and 
+                         * value here. If we search 'equal' or 'not equal' we will change to 'like' or 'not like'
+                         * NOTE : Same thing handled in ReportRun->generateAdvFilterSql() api
+                         */
+                        if($this->isFloatType($field->getFieldDataType()) && !empty($value)
+                                && in_array($operator, array('e', 'n') )){
+                            $sqlOperator = ($operator == 'e') ? ' LIKE ' : ' NOT LIKE ';
+                                if ((float) $value == round((float)$value)) {
+                                // if given value is witn out any decimals (Ex:- 1234), then we search with '1234.%'
+                                $value = $value.'.';
+                            }
+                            $value = $value."%";
+                        }
 
-			if(($this->isNumericType($field->getFieldDataType())) && empty($value)) {				
-				$value = '0';
-			}
+                        if( ($field->getFieldName() != 'birthday' || ($field->getFieldName() == 'birthday'
+                                        && $this->isRelativeSearchOperators($operator)))){
+                            if($field->getFieldDataType() !== 'integer'){
+                                $value = "'$value'";
+                            }
+                        }
+
+                        if($this->isNumericType($field->getFieldDataType()) && empty($value)) {
+                            $value = '0';
+                        }
 			$sql[] = "$sqlOperator $value";
 		}
 		return $sql;
@@ -1184,6 +1239,14 @@ class QueryGenerator {
 	protected function isNumericType($type) {
 		return ($type == 'integer' || $type == 'double' || $type == 'currency');
 	}
+        
+        /**
+        * Function to identify given type is a floating(decimal) type or not. Column types like decimal will store 
+        * information as floating values. All those column related field types comes under this
+        */
+        protected function isFloatType($type) {
+           return ($type == 'double' || $type == 'currency' || $type == 'multicurrency');
+        }
 
 	protected function isStringType($type) {
 		return ($type == 'string' || $type == 'text' || $type == 'email' || $type == 'reference');
@@ -1195,7 +1258,7 @@ class QueryGenerator {
 
 	public function fixDateTimeValue($name, $value, $first = true) {
 		$moduleFields = $this->getModuleFields();
-		$field = $moduleFields[$name];
+		$field = isset($moduleFieldList) ? $moduleFields[$name] : null;
 		$type = $field ? $field->getFieldDataType() : false;
 		if($type == 'datetime') {
 			if(strrpos($value, ' ') === false) {
@@ -1231,7 +1294,7 @@ class QueryGenerator {
 	}
 
 	public function hasConditionals() {
-		if(count($this->conditionals) > 0) {
+		if(php7_count($this->conditionals) > 0) {
 			return true;
 		}
 		return false;
@@ -1277,7 +1340,7 @@ class QueryGenerator {
 
 	public function addUserSearchConditions($input) {
 		global $log,$default_charset;
-		if($input['searchtype']=='advance') {
+		if(isset($input['searchtype']) && $input['searchtype']=='advance') {
 
 			$json = new Zend_Json();
 			$advft_criteria = $_REQUEST['advft_criteria'];
@@ -1285,13 +1348,13 @@ class QueryGenerator {
 			$advft_criteria_groups = $_REQUEST['advft_criteria_groups'];
 			if(!empty($advft_criteria_groups))	$advft_criteria_groups = $json->decode($advft_criteria_groups);
 
-			if(empty($advft_criteria) || count($advft_criteria) <= 0) {
+			if(empty($advft_criteria) || php7_count($advft_criteria) <= 0) {
 				return ;
 			}
 
 			$advfilterlist = getAdvancedSearchCriteriaList($advft_criteria, $advft_criteria_groups, $this->getModule());
 
-			if(empty($advfilterlist) || count($advfilterlist) <= 0) {
+			if(empty($advfilterlist) || php7_count($advfilterlist) <= 0) {
 				return ;
 			}
 
@@ -1302,7 +1365,7 @@ class QueryGenerator {
 			}
 			foreach ($advfilterlist as $groupindex=>$groupcolumns) {
 				$filtercolumns = $groupcolumns['columns'];
-				if(count($filtercolumns) > 0) {
+				if(php7_count($filtercolumns) > 0) {
 					$this->startGroup('');
 					foreach ($filtercolumns as $index=>$filter) {
 						$name = explode(':',$filter['columnname']);
@@ -1324,7 +1387,7 @@ class QueryGenerator {
 				}
 			}
 			$this->endGroup();
-		} elseif($input['type']=='dbrd') {
+		} elseif(isset($input['type']) && $input['type']=='dbrd') {
 			if($this->conditionInstanceCount > 0) {
 				$this->startGroup(self::$AND);
 			} else {
@@ -1333,8 +1396,8 @@ class QueryGenerator {
 			$allConditionsList = $this->getDashBoardConditionList();
 			$conditionList = $allConditionsList['conditions'];
 			$relatedConditionList = $allConditionsList['relatedConditions'];
-			$noOfConditions = count($conditionList);
-			$noOfRelatedConditions = count($relatedConditionList);
+			$noOfConditions = php7_count($conditionList);
+			$noOfRelatedConditions = php7_count($relatedConditionList);
 			foreach ($conditionList as $index=>$conditionInfo) {
 				$this->addCondition($conditionInfo['fieldname'], $conditionInfo['value'],
 						$conditionInfo['operator']);
@@ -1368,7 +1431,7 @@ class QueryGenerator {
 			if(isset($input['search_text']) && $input['search_text']!="") {
 				// search other characters like "|, ?, ?" by jagi
 				$value = $input['search_text'];
-				$stringConvert = function_exists(iconv) ? @iconv("UTF-8",$default_charset,$value)
+				$stringConvert = function_exists("iconv") ? @iconv("UTF-8",$default_charset,$value)
 						: $value;
 				if(!$this->isStringType($type)) {
 					$value=trim($stringConvert);
@@ -1378,7 +1441,7 @@ class QueryGenerator {
 					global $mod_strings;
 					// Get all the keys for the for the Picklist value
 					$mod_keys = array_keys($mod_strings, $value);
-					if(sizeof($mod_keys) >= 1) {
+					if(php7_sizeof($mod_keys) >= 1) {
 						// Iterate on the keys, to get the first key which doesn't start with LBL_      (assuming it is not used in PickList)
 						foreach($mod_keys as $mod_idx=>$mod_key) {
 							$stridx = strpos($mod_key, 'LBL_');

@@ -398,7 +398,8 @@ class Users_Record_Model extends Vtiger_Record_Model {
             $url = \Vtiger_Functions::getFilePublicURL($imageId, $imageName);
 
 			//decode_html - added to handle UTF-8 characters in file names
-			$imageOriginalName = urlencode(decode_html($imageName));
+			$imageNameDecoded =decode_html($imageName);
+			$imageOriginalName = urlencode($imageNameDecoded ? $imageNameDecoded : "");
             if($url) {
                 $url = $site_URL.$url;
             }
@@ -429,12 +430,32 @@ class Users_Record_Model extends Vtiger_Record_Model {
 				$accessibleUser = $this->getSameLevelUsersWithSubordinates();
 			} else if($currentUserRoleModel->get('allowassignedrecordsto') === '3') {
 				$accessibleUser = $this->getRoleBasedSubordinateUsers();
+			} else if($currentUserRoleModel->get('allowassignedrecordsto') === '4'){
+				$accessibleUser = $this->getSameRolelUsersWithSubordinates();
 			}
 			Vtiger_Cache::set('vtiger-'.$this->getRole().'-'.$currentUserRoleModel->get('allowassignedrecordsto'), 'accessibleusers',$accessibleUser);
 		}
 		return $accessibleUser;
 	}
 
+	/**
+	 * Function to get same ROLE and subordinates Users
+	 * @return <array> Users
+	 */
+	public function getSameRolelUsersWithSubordinates(){
+		$currentUserRoleModel = Settings_Roles_Record_Model::getInstanceById($this->getRole());
+                $roleID = $currentUserRoleModel->getId();
+		//$sameLevelRoles = $currentUserRoleModel->getSameLevelRoles();
+                //$sameLevelUsers = $this->getAllUsersOnRoles($sameLevelRoles);
+                $thisRole = array($roleID =>$currentUserRoleModel );
+                $sameLevelUsers = $this->getAllUsersOnRoles($thisRole);
+		$subordinateUsers = $this->getRoleBasedSubordinateUsers();
+		foreach ($subordinateUsers as $userId => $userName) {
+			$sameLevelUsers[$userId] = $userName;
+		}
+		return $sameLevelUsers;
+	}
+        
 	/**
 	 * Function to get same level and subordinates Users
 	 * @return <array> Users
@@ -598,7 +619,8 @@ class Users_Record_Model extends Vtiger_Record_Model {
 	function getTagCloudStatus() {
 		$db = PearDatabase::getInstance();
 		$query = "SELECT visible FROM vtiger_homestuff WHERE userid=? AND stufftype='Tag Cloud'";
-		$visibility = $db->query_result($db->pquery($query, array($this->getId())), 0, 'visible');
+		$rs = $db->pquery($query, array($this->getId()));
+		$visibility = $db->query_result($rs, 0, 'visible');
 		if($visibility == 0) {
 			return true;
 		} 
@@ -653,7 +675,7 @@ class Users_Record_Model extends Vtiger_Record_Model {
 	 * @return string
 	 */
 	function getCurrentUserActivityReminderInSeconds() {
-		$activityReminder = $this->reminder_interval;
+		$activityReminder = isset($this->reminder_interval) ? $this->reminder_interval : 0;
 		$activityReminderInSeconds = '';
 		if($activityReminder != 'None') {
 			preg_match('/([0-9]+)[\s]([a-zA-Z]+)/', $activityReminder, $matches);
@@ -730,14 +752,15 @@ class Users_Record_Model extends Vtiger_Record_Model {
 	public function isAccountOwner() {
 		$db = PearDatabase::getInstance();
 		$query = 'SELECT is_owner FROM vtiger_users WHERE id = ?';
-		$isOwner = $db->query_result($db->pquery($query, array($this->getId())), 0, 'is_owner');
+		$rs = $db->pquery($query, array($this->getId()));
+		$isOwner = $db->query_result($rs, 0, 'is_owner');
 		if($isOwner == 1) {
 			return true;
 		} 
 		return false;
 	}
 	
-	public function getActiveAdminUsers() {
+	public static function getActiveAdminUsers() {
 		$db = PearDatabase::getInstance();
 
 		$sql = 'SELECT id FROM vtiger_users WHERE status=? AND is_admin=?';
@@ -778,7 +801,7 @@ class Users_Record_Model extends Vtiger_Record_Model {
 	 * @param User Ids of user to be deleted and user
 	 * to whom records should be assigned
 	 */
-	public function deleteUserPermanently($userId, $newOwnerId) {
+	public static function deleteUserPermanently($userId, $newOwnerId) {
 		$db = PearDatabase::getInstance();
 
 		$sql = "UPDATE vtiger_crmentity SET smcreatorid=?,smownerid=?,modifiedtime=? WHERE smcreatorid=? AND setype=?";
@@ -880,9 +903,16 @@ class Users_Record_Model extends Vtiger_Record_Model {
 	 */
 	public static function changeUsername($newUsername,$newpassword,$oldPassword,$forUserId) {
 		$response = array('success'=> false,'message' => 'error');
-		$record = self::getInstanceFromPreferenceFile($forUserId);
-		$moduleName = $record->getModuleName();
+		$moduleName = "Users";
+		$currentUserModel = static::getCurrentUserModel();
 		
+		if (empty($newpassword) || empty($forUserId)) {
+			$response['message'] = vtranslate('ERROR_CHANGE_USERNAME', $moduleName);
+			return $response;
+		}
+
+		$record = self::getInstanceFromPreferenceFile($forUserId);
+
 		if(!Users_Privileges_Model::isPermittedToChangeUsername($forUserId)) {
 			$response['message'] = vtranslate('LBL_PERMISSION_DENIED', $moduleName);
 			return $response;

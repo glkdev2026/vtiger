@@ -36,7 +36,7 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 		//$this->set('assigned_user_id', $currentUserModel->getId());
 		$this->getModule()->saveRecord($this);
 		$documentIds = $this->get('documentids');
-		if (!empty ($documentIds)) {
+		if (!empty ($documentIds) && $documentIds != "[]") { /* json_encoded check for empty */
 			$this->deleteDocumentLink();
 			$this->saveDocumentDetails();
 		}
@@ -48,16 +48,18 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 	public function send($addToQueue = false) {
 		$currentUserModel = Users_Record_Model::getCurrentUserModel();
 		$rootDirectory = vglobal('root_directory');
+		$logo = false;
 
 		$mailer = Emails_Mailer_Model::getInstance();
 		$mailer->IsHTML(true);
+		$id = isset($_REQUEST['id']) ? $_REQUEST['id'] : null;
 
 		$fromEmail = $this->getFromEmailAddress();
 		$replyTo = $this->getReplyToEmail();
 		$userName = $currentUserModel->getName();
 
 		// To eliminate the empty value of an array
-		$toEmailInfo = array_filter($this->get('toemailinfo'));
+		$toEmailInfo = $this->get('toemailinfo') ? array_filter($this->get('toemailinfo')) : array();
 		$emailsInfo = array();
 		foreach ($toEmailInfo as $id => $emails) {
 			foreach($emails as $key => $value){
@@ -100,8 +102,8 @@ class Emails_Record_Model extends Vtiger_Record_Model {
                 if(trim($selectedEmail)){
                     array_push($emails, $selectedEmail);
                 }
-            }
-        }
+      //      }
+      //  }
         
 			$inReplyToMessageId = ''; 
 			$generatedMessageId = '';
@@ -127,8 +129,8 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 						$inReplyToMessageId = $generatedMessageId;
 					}
 					// Apply merge for non-Users module merge tags.
-					$description = getMergedDescription($mergedDescriptionWithHyperLinkConversion, $id, $parentModule);
-					$subject = getMergedDescription($mergedSubject, $id, $parentModule);
+					$description = getMergedDescription($mergedDescriptionWithHyperLinkConversion, $selectedId, $parentModule);
+					$subject = getMergedDescription($mergedSubject, $selectedId, $parentModule);
 				} else {
 					// Re-merge the description for user tags based on actual user.
 					$description = getMergedDescription($mergedDescriptionWithHyperLinkConversion, $id, 'Users');
@@ -173,11 +175,11 @@ class Emails_Record_Model extends Vtiger_Record_Model {
             $plainBody = decode_emptyspace_html($description);
             $plainBody = preg_replace(array("/<p>/i","/<br>/i","/<br \/>/i"),array("\n","\n","\n"),$plainBody);
             $plainBody .= "\n\n".$currentUserModel->get('signature');
-            $plainBody = utf8_encode(strip_tags($plainBody));
+            $plainBody = strip_tags($plainBody);
             $plainBody = Emails_Mailer_Model::convertToAscii($plainBody);
             $plainBody = $this->convertUrlsToTrackUrls($plainBody, $id,'plain');
             $mailer->AltBody = $plainBody;
-            $mailer->AddAddress($email);
+     //       $mailer->AddAddress($email);
 
             //Adding attachments to mail
             if(is_array($attachments)) {
@@ -220,9 +222,10 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 				$status = $mailer->Send(true);
 			}
 			if(!$status) {
-				$status = $mailer->getError();
-				//If mailer error, then update emailflag as saved
-				if($status){
+				// Before inspecting for mailer error do a explict check on its configuration.
+				$err = $mailer->_serverConfigured ? $mailer->getError() : vtranslate("LBL_MAIL_SERVER_DESCRIPTION", "Settings:Vtiger");
+				// If mailer error, then update emailflag as saved
+				if($err){
 					$this->updateEmailFlag();
 				}
 			} else {
@@ -240,9 +243,14 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 					if (function_exists('mb_convert_encoding')) {
 						$folderName = mb_convert_encoding($folderName, "UTF7-IMAP", "UTF-8");
 					}
-					imap_append($connector->mBox, $connector->mBoxUrl.$folderName, $message, "\\Seen");
+					// propogate change to connected imap mailbox if valid.
+					if ($connector->mBox) {
+						imap_append($connector->mBox, $connector->mBoxUrl.$folderName, $message, "\\Seen");
+					}
 				}
 			}
+		}
+	}
 		return $status;
 	}
 
@@ -250,7 +258,7 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 	 * Returns the From Email address that will be used for the sent mails
 	 * @return <String> - from email address
 	 */
-	function getFromEmailAddress() {
+	static function getFromEmailAddress() {
 		$db = PearDatabase::getInstance();
 		$currentUserModel = Users_Record_Model::getCurrentUserModel();
 
@@ -346,6 +354,7 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 				$documentsList[$i]['attachment'] = decode_html($db->query_result($documentRes, $i, 'name'));
                 $documentsList[$i]['storedname'] = decode_html($db->query_result($documentRes, $i, 'storedname'));
 				$documentsList[$i]['type'] = $db->query_result($documentRes, $i, 'type');
+				$documentsList[$i]['filenamewithpath'] = $documentsList[$i]['path'].$documentsList[$i]['fileid'].'_'.$documentsList[$i]['storedname'];
 			}
 		}
 		return $documentsList;
@@ -371,15 +380,16 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 	 * Function to save details of document and email
 	 */
 	public function saveDocumentDetails() {
+            $documentIds = json_decode($this->get('documentids'), true);
+            if(!empty($documentIds)) {
 		$db = PearDatabase::getInstance();
 		$record = $this->getId();
-
-		$documentIds = array_unique($this->get('documentids'));
-
-		$count = count($documentIds);
+                $documentIds = array_unique($documentIds);
+		$count = php7_count($documentIds);
 		for ($i=0; $i<$count; $i++) {
 			$db->pquery("INSERT INTO vtiger_senotesrel(crmid, notesid) VALUES(?, ?)", array($record, $documentIds[$i]));
 		}
+            }
 	}
 
 	/**
@@ -390,7 +400,7 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 		$db = PearDatabase::getInstance();
 		$query = 'DELETE FROM vtiger_senotesrel where crmid=?';
 		$params = array($this->getId());
-		if(count($idList) > 0) {
+		if(php7_count($idList) > 0) {
 			$query .= 'AND notesid IN ('.generateQuestionMarks($idList).')';
 			$params = array_merge($params,$idList);
 		}
@@ -404,7 +414,7 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 	public function deleteAttachment($emailAttachmentDetails = array()) {
 		$db = PearDatabase::getInstance();
 
-		if(count($emailAttachmentDetails) <= 0) {
+		if(php7_count($emailAttachmentDetails) <= 0) {
 			return;
 		}
 		$attachmentIdList = array();
@@ -432,7 +442,7 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 			}
 		}
 		if (!empty ($documentIds)) {
-			$count = count($documentIds);
+			$count = php7_count($documentIds);
 			for ($i=0; $i<$count; $i++) {
 				try {
 					$documentRecordModel = Vtiger_Record_Model::getInstanceById($documentIds[$i], 'Documents');

@@ -11,6 +11,9 @@
 class Settings_Vtiger_List_View extends Settings_Vtiger_Index_View {
 	protected $listViewEntries = false;
 	protected $listViewHeaders = false;
+	protected $listviewinitcalled = false;
+	protected $listViewLinks = array();
+	protected $pagingModel = null;
 
 	function __construct() {
 		parent::__construct();
@@ -36,16 +39,20 @@ class Settings_Vtiger_List_View extends Settings_Vtiger_Index_View {
 	 * Function to initialize the required data in smarty to display the List View Contents
 	 */
 	public function initializeListViewContents(Vtiger_Request $request, Vtiger_Viewer $viewer) {
-		$moduleName = $request->getModule();
-		$qualifiedModuleName = $request->getModule(false);
-		$pageNumber = $request->get('page');
-		$orderBy = $request->get('orderby');
-		$sortOrder = $request->get('sortorder');
-		$sourceModule = $request->get('sourceModule');
-		$forModule = $request->get('formodule');
+
+		if($this->listviewinitcalled){
+			return;
+		}
+			$moduleName = $request->getModule();
+			$qualifiedModuleName = $request->getModule(false);
+			$pageNumber = $request->get('page');
+			$orderBy = $request->get('orderby');
+			$sortOrder = $request->get('sortorder');
+			$sourceModule = $request->get('sourceModule');
+			$forModule = $request->get('formodule');
 		
-		$searchKey = $request->get('search_key');
-		$searchValue = $request->get('search_value');
+			$searchKey = $request->get('search_key');
+			$searchValue = $request->get('search_value');
 		
 		if($sortOrder == "ASC"){
 			$nextSortOrder = "DESC";
@@ -92,7 +99,7 @@ class Settings_Vtiger_List_View extends Settings_Vtiger_Index_View {
 			$this->listViewEntries = $listViewModel->getListViewEntries($pagingModel);
             $this->pagingModel = $pagingModel;
 		}
-		$noOfEntries = count($this->listViewEntries);
+		$noOfEntries = php7_count($this->listViewEntries);
 		if(!$this->listViewLinks){
 			$this->listViewLinks = $listViewModel->getListViewLinks();
 		}
@@ -135,6 +142,8 @@ class Settings_Vtiger_List_View extends Settings_Vtiger_Index_View {
 			$viewer->assign('PAGE_COUNT', $pageCount);
 			$viewer->assign('LISTVIEW_COUNT', $totalCount);
 		}
+
+		$this->listviewinitcalled =true; // to make a early exit if it is called more than once
 	}
     
     public function postProcess(Vtiger_Request $request) {

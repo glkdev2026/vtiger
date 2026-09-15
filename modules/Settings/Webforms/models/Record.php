@@ -10,6 +10,7 @@
 
 class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model {
 
+	public $selectedFields;
 	/**
 	 * Function to get Id of this record instance
 	 * @return <Integer> Id
@@ -239,7 +240,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model {
 	 * @return <String> id
 	 */
 	public function generatePublicId() {
-		return md5(microtime(true) + $this->getName());
+		return md5(sprintf("%f%s", microtime(true), $this->getName()));
 	}
 
 	/**
@@ -267,7 +268,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model {
 	public function save() {
 		$currentUser = Users_Record_Model::getCurrentUserModel();
 		$mode = $this->get('mode');
-
+		$roundrobinUsersList = '';
 		$db = PearDatabase::getInstance();		
 		$this->setCheckBoxValue('enabled');
 		$this->setCheckBoxValue('captcha');
@@ -295,7 +296,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model {
 		$selectedFieldsData = $this->get('selectedFieldsData');
 		$sourceModuleModel = Vtiger_Module_Model::getInstance($this->get('targetmodule'));
 
-		$fieldInsertQuery = "INSERT INTO vtiger_webforms_field(webformid, fieldname, neutralizedfield, defaultvalue, required, sequence, hidden) VALUES(?, ?, ?, ?, ?, ?, ?)";
+		$fieldInsertQuery = "INSERT INTO vtiger_webforms_field(webformid, fieldid, fieldname, neutralizedfield, defaultvalue, required, sequence, hidden) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
 		foreach ($selectedFieldsData as $fieldName => $fieldDetails) {
 			$params = array($this->getId());
 			$neutralizedField = $fieldName;
@@ -337,7 +338,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model {
 			if ($dataType === 'double') {
 				$fieldDefaultValue = CurrencyField::convertToDBFormat($fieldDefaultValue, NULL, true);
 			}
-			array_push($params, $fieldName, $neutralizedField, $fieldDefaultValue, $fieldDetails['required'], $fieldDetails['sequence'], $fieldDetails['hidden']);
+			array_push($params, $fieldModel->getId(), $fieldName, $neutralizedField, $fieldDefaultValue, $fieldDetails['required'], $fieldDetails['sequence'], $fieldDetails['hidden']);
 			$db->pquery($fieldInsertQuery, $params);
 		}
 

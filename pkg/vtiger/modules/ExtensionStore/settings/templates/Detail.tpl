@@ -7,7 +7,7 @@
 {strip}
 	<div class="container-fluid detailViewInfo extensionDetails" style='margin-top:0px;'>
 		{if !($ERROR)}
-            <input type="hidden" name="mode" value="{$smarty.request.mode}" />
+            <input type="hidden" name="mode" value="{$REQ->get('mode')}" />
 			<input type="hidden" name="extensionId" value="{$EXTENSION_ID}" />
 			<input type="hidden" name="targetModule" value="{$EXTENSION_DETAIL->get('name')}" />
 			<input type="hidden" name="moduleAction" value="{$MODULE_ACTION}" />
@@ -17,7 +17,7 @@
                                 {assign var=ON_RATINGS value=$EXTENSION_DETAIL->get('avgrating')}
                                 <div class="row-fluid">
                                     <span data-score="{$ON_RATINGS}" class="rating span5" data-readonly="true"></span>
-                                    <span class="span6">({count($CUSTOMER_REVIEWS)} {vtranslate('LBL_REVIEWS', $QUALIFIED_MODULE)})</span>
+                                    <span class="span6">({php7_count($CUSTOMER_REVIEWS)} {vtranslate('LBL_REVIEWS', $QUALIFIED_MODULE)})</span>
                                 </div>
                             </div>
                             <div class="span6">

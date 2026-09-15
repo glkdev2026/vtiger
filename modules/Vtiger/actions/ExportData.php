@@ -110,7 +110,7 @@ class Vtiger_ExportData_Action extends Vtiger_Mass_Action {
 		$fieldInstances = $this->moduleFieldInstances;
 
 		$orderBy = $request->get('orderby');
-		$orderByFieldModel = $fieldInstances[$orderBy];
+		$orderByFieldModel = isset($fieldInstances[$orderBy]) ? $fieldInstances[$orderBy] : "";
 		$sortOrder = $request->get('sortorder');
 
 		if ($mode !== 'ExportAllData') {
@@ -129,7 +129,7 @@ class Vtiger_ExportData_Action extends Vtiger_Mass_Action {
 			}
 
 			$glue = '';
-			if($searchParams && count($queryGenerator->getWhereFields())) {
+			if($searchParams && php7_count($queryGenerator->getWhereFields())) {
 				$glue = QueryGenerator::$AND;
 			}
 			$searchParams = array_merge($searchParams, $tagParams);
@@ -251,22 +251,12 @@ class Vtiger_ExportData_Action extends Vtiger_Mass_Action {
 		header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT" );
 		header("Cache-Control: post-check=0, pre-check=0", false );
 
-		$header = implode("\", \"", $headers);
-		$header = "\"" .$header;
-		$header .= "\"\r\n";
-		echo $header;
+		ob_clean();
+		$fp = fopen("php://output", "a+");
+		fputcsv($fp, Vtiger_Functions::sanitizeForCSVExport($headers));	
 
 		foreach($entries as $row) {
-			foreach ($row as $key => $value) {
-				/* To support double quotations in CSV format
-				 * To review: http://creativyst.com/Doc/Articles/CSV/CSV01.htm#EmbedBRs
-				 */
-				$row[$key] = str_replace('"', '""', $value);
-			}
-			$line = implode("\",\"",$row);
-			$line = "\"" .$line;
-			$line .= "\"\r\n";
-			echo $line;
+			fputcsv($fp, Vtiger_Functions::sanitizeForCSVExport($row));
 		}
 	}
 
@@ -303,14 +293,16 @@ class Vtiger_ExportData_Action extends Vtiger_Mass_Action {
 				continue;
 			}
 			//Track if the value had quotes at beginning
-			$beginsWithDoubleQuote = strpos($value, '"') === 0;
-			$endsWithDoubleQuote = substr($value,-1) === '"'?1:0;
+			if (is_string($value)) {
+				$beginsWithDoubleQuote = strpos($value, '"') === 0;
+				$endsWithDoubleQuote = substr($value,-1) === '"'?1:0;
+				$value = trim($value,"\"");
+			}
 
-			$value = trim($value,"\"");
 			$uitype = $fieldInfo->get('uitype');
 			$fieldname = $fieldInfo->get('name');
 
-			if(!$this->fieldDataTypeCache[$fieldName]) {
+			if(!isset($this->fieldDataTypeCache[$fieldName])) {
 				$this->fieldDataTypeCache[$fieldName] = $fieldInfo->getFieldDataType();
 			}
 			$type = $this->fieldDataTypeCache[$fieldName];
@@ -333,7 +325,7 @@ class Vtiger_ExportData_Action extends Vtiger_Mass_Action {
 			} elseif($uitype == 52 || $type == 'owner') {
 				$value = Vtiger_Util_Helper::getOwnerName($value);
 			}elseif($type == 'reference'){
-				$value = trim($value);
+				$value = isset($value) && $value ? trim($value) :'';
 				if(!empty($value)) {
 					$parent_module = getSalesEntityType($value);
 					$displayValueArray = getEntityName($parent_module, $value);
@@ -358,7 +350,13 @@ class Vtiger_ExportData_Action extends Vtiger_Mass_Action {
 				if ($value && $value != '0000-00-00') {
 					$value = DateTimeField::convertToUserFormat($value);
 				}
-			} elseif($type == 'datetime') {
+			} /**
+			*  Handled Conversion of time as per custom field time format in exported file
+			*/
+			elseif($uitype == 14) {
+			   $timeUIObj = new Vtiger_Time_UIType();
+			   $value = $timeUIObj->getDisplayValue($value);
+		   }elseif($type == 'datetime') {
 				if ($moduleName == 'Calendar' && in_array($fieldName, array('date_start', 'due_date'))) {
 					$timeField = 'time_start';
 					if ($fieldName === 'due_date') {

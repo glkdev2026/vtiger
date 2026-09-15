@@ -39,7 +39,9 @@ function createUserPrivilegesfile($userid)
 		$user_focus->id = $userid; 
 		foreach($user_focus->column_fields as $field=>$value_iter)
         	{
-               		$userInfo[$field]= $user_focus->$field;
+               		if (property_exists($user_focus, $field)) {
+						$userInfo[$field]= $user_focus->$field;
+					}
         	}
 
 		if($user_focus->is_admin == 'on')
@@ -147,7 +149,7 @@ if($handle)
                 	{
                         	$parTabId=$adb->query_result($result,$i,'tabid');
                         	$relTabId=$adb->query_result($result,$i,'relatedto_tabid');
-				if(is_array($relModSharArr[$relTabId]))
+				if(isset($relModSharArr[$relTabId]) && is_array($relModSharArr[$relTabId]))
 				{
 					$temArr=$relModSharArr[$relTabId];
 					$temArr[]=$parTabId;
@@ -372,7 +374,7 @@ if($handle)
 				Array('Leads', 'Accounts', 'Contacts', 'Potentials', 'HelpDesk', 
 				'Emails', 'Campaigns','Quotes', 'PurchaseOrder', 'SalesOrder', 'Invoice'));
 
-			for($idx = 0; $idx < count($custom_modules); ++$idx) {
+			for($idx = 0; $idx < php7_count($custom_modules); ++$idx) {
 				$module_name = $custom_modules[$idx];
 				$mod_share_perm_array = getUserModuleSharingObjects($module_name,$userid,
 					$def_org_share,$current_user_roles,$parent_roles,$current_user_groups);
@@ -544,7 +546,7 @@ function getUserModuleSharingObjects($module,$userid,$def_org_share,$current_use
 			$query="select vtiger_datashare_role2group.* from vtiger_datashare_role2group inner join vtiger_datashare_module_rel on vtiger_datashare_module_rel.shareid=vtiger_datashare_role2group.shareid where vtiger_datashare_module_rel.tabid=?";
 			$qparams = array($mod_tabid);
 
-			if (count($groupList) > 0) {
+			if (php7_count($groupList) > 0) {
 				$query .= " and vtiger_datashare_role2group.to_groupid in (". generateQuestionMarks($groupList) .")";
 				array_push($qparams, $groupList);
 			}
@@ -711,7 +713,7 @@ function getUserModuleSharingObjects($module,$userid,$def_org_share,$current_use
 
 		$query="select vtiger_datashare_rs2grp.* from vtiger_datashare_rs2grp inner join vtiger_datashare_module_rel on vtiger_datashare_module_rel.shareid=vtiger_datashare_rs2grp.shareid where vtiger_datashare_module_rel.tabid=?";
 		$qparams = array($mod_tabid);
-		if (count($groupList) > 0) {
+		if (php7_count($groupList) > 0) {
 			$query .= " and vtiger_datashare_rs2grp.to_groupid in (". generateQuestionMarks($groupList) .")";
 			array_push($qparams, $groupList);
 		}
@@ -978,7 +980,7 @@ function getUserModuleSharingObjects($module,$userid,$def_org_share,$current_use
 
 		$query="select vtiger_datashare_grp2grp.* from vtiger_datashare_grp2grp inner join vtiger_datashare_module_rel on vtiger_datashare_module_rel.shareid=vtiger_datashare_grp2grp.shareid where vtiger_datashare_module_rel.tabid=?";
 		$qparams = array($mod_tabid);
-		if (count($groupList) > 0) {
+		if (php7_count($groupList) > 0) {
 			$query .= " and vtiger_datashare_grp2grp.to_groupid in (". generateQuestionMarks($groupList) .")";
 			array_push($qparams, $groupList);
 		}
@@ -1367,7 +1369,7 @@ function constructArray($var)
 function constructSingleStringValueArray($var)
 {
 
-        $size = sizeof($var);
+        $size = php7_sizeof($var);
         $i=1;
         if (is_array($var))
         {
@@ -1397,7 +1399,7 @@ function constructSingleStringValueArray($var)
 function constructSingleStringKeyAndValueArray($var)
 {
 
-        $size = sizeof($var);
+        $size = php7_sizeof($var);
         $i=1;
         if (is_array($var))
         {
@@ -1428,7 +1430,7 @@ function constructSingleStringKeyAndValueArray($var)
  */
 function constructSingleStringKeyValueArray($var) {
 	global $adb;
-    $size = sizeof($var);
+    $size = php7_sizeof($var);
     $i=1;
     if (is_array($var)) {
 		$code = 'array(';
@@ -1500,6 +1502,7 @@ function constructTwoDimensionalArray($var)
        		foreach ($var as $key => $secarr)
 		{
            		$code .= $key.'=>array(';
+				if($secarr == null || !is_iterable($secarr))continue;
 			foreach($secarr as $seckey => $secvalue)
 			{
 				$code .= $seckey.'=>'.$secvalue.',';
@@ -1667,7 +1670,7 @@ function populateSharingPrivileges($enttype,$userid,$module,$pertype, $var_name_
 		// Lookup for the variable if not set through function argument		
 		if(!$var_name_arr) $var_name_arr=$$var_name;	
 		$user_arr=Array();
-		if(sizeof($var_name_arr['ROLE']) > 0)
+		if(php7_sizeof($var_name_arr['ROLE']) > 0)
 		{
 			foreach($var_name_arr['ROLE'] as $roleid=>$roleusers)
 			{
@@ -1683,7 +1686,7 @@ function populateSharingPrivileges($enttype,$userid,$module,$pertype, $var_name_
 				}
 			}
 		}
-		if(sizeof($var_name_arr['GROUP']) > 0)
+		if(php7_sizeof($var_name_arr['GROUP']) > 0)
 		{
 			foreach($var_name_arr['GROUP'] as $grpid=>$grpusers)
 			{
@@ -1716,7 +1719,7 @@ function populateSharingPrivileges($enttype,$userid,$module,$pertype, $var_name_
 		// Lookup for the variable if not set through function argument
 		if(!$var_name_arr) $var_name_arr=$$var_name;
 		$grp_arr=Array();
-		if(sizeof($var_name_arr['GROUP']) > 0)
+		if(php7_sizeof($var_name_arr['GROUP']) > 0)
 		{
 
 			foreach($var_name_arr['GROUP'] as $grpid=>$grpusers)
@@ -1770,7 +1773,7 @@ function populateRelatedSharingPrivileges($enttype,$userid,$module,$relmodule,$p
 		// Lookup for the variable if not set through function argument
 		if(!$var_name_arr) $var_name_arr=$$var_name;	
 		$user_arr=Array();
-		if(sizeof($var_name_arr['ROLE']) > 0)
+		if(php7_sizeof($var_name_arr['ROLE']) > 0)
 		{
 			foreach($var_name_arr['ROLE'] as $roleid=>$roleusers)
 			{
@@ -1786,7 +1789,7 @@ function populateRelatedSharingPrivileges($enttype,$userid,$module,$relmodule,$p
 				}
 			}
 		}
-		if(sizeof($var_name_arr['GROUP']) > 0)
+		if(php7_sizeof($var_name_arr['GROUP']) > 0)
 		{
 			foreach($var_name_arr['GROUP'] as $grpid=>$grpusers)
 			{
@@ -1819,7 +1822,7 @@ function populateRelatedSharingPrivileges($enttype,$userid,$module,$relmodule,$p
 		// Lookup for the variable if not set through function argument
 		if(!$var_name_arr) $var_name_arr=$$var_name;
 		$grp_arr=Array();
-		if(sizeof($var_name_arr['GROUP']) > 0)
+		if(php7_sizeof($var_name_arr['GROUP']) > 0)
 		{
 
 			foreach($var_name_arr['GROUP'] as $grpid=>$grpusers)

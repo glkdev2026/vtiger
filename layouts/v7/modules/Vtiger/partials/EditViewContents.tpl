@@ -14,7 +14,7 @@
 	{/if}
 
 	<div name='editContent'>
-		{if $DUPLICATE_RECORDS}
+		{if isset($DUPLICATE_RECORDS) && $DUPLICATE_RECORDS}
 			<div class="fieldBlockContainer duplicationMessageContainer">
 				<div class="duplicationMessageHeader"><b>{vtranslate('LBL_DUPLICATES_DETECTED', $MODULE)}</b></div>
 				<div>{getDuplicatesPreventionMessage($MODULE, $DUPLICATE_RECORDS)}</div>
@@ -32,7 +32,7 @@
 								{assign var="isReferenceField" value=$FIELD_MODEL->getFieldDataType()}
                                                                 {assign var=FIELD_INFO value=$FIELD_MODEL->getFieldInfo()}
 								{assign var="refrenceList" value=$FIELD_MODEL->getReferenceList()}
-								{assign var="refrenceListCount" value=count($refrenceList)}
+								{assign var="refrenceListCount" value=php7_count($refrenceList)}
 								{if $FIELD_MODEL->isEditable() eq true}
 									{if $FIELD_MODEL->get('uitype') eq "19"}
 										{if $COUNTER eq '1'}
@@ -59,7 +59,7 @@
 												{/if}
 												<select style="width: 140px;" class="select2 referenceModulesList">
 													{foreach key=index item=value from=$refrenceList}
-														<option value="{$value}" {if $value eq $REFERENCED_MODULE_NAME} selected {/if}>{vtranslate($value, $value)}</option>
+														<option value="{$value}" {if isset($REFERENCED_MODULE_NAME) && $value eq $REFERENCED_MODULE_NAME} selected {/if}>{vtranslate($value, $value)}</option>
 													{/foreach}
 												</select>
 											{else}
@@ -68,7 +68,7 @@
 										{else if $FIELD_MODEL->get('uitype') eq "83"}
 											{include file=vtemplate_path($FIELD_MODEL->getUITypeModel()->getTemplateName(),$MODULE) COUNTER=$COUNTER MODULE=$MODULE}
 											{if $TAXCLASS_DETAILS}
-												{assign 'taxCount' count($TAXCLASS_DETAILS)%2}
+												{assign var='taxCount' value=php7_count($TAXCLASS_DETAILS)%2}
 												{if $taxCount eq 0}
 													{if $COUNTER eq 2}
 														{assign var=COUNTER value=1}

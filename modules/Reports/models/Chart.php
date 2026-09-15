@@ -121,7 +121,10 @@ abstract class Base_Chart extends Vtiger_Base_Model{
 	}
 
 	function getQueryColumnsByFieldModel() {
-		return $this->fieldModels;
+		if (property_exists($this, 'fieldModels')) {
+			return $this->fieldModels;
+		}
+		return array();
 	}
 
 	function setQueryColumns($columns) {
@@ -141,7 +144,7 @@ abstract class Base_Chart extends Vtiger_Base_Model{
 					$aggregateFunction = $columnInfo[5];
 					if(empty($referenceFieldReportColumnSQL)) {
 						$reportColumnSQL = $this->getReportTotalColumnSQL($columnInfo);
-						$reportColumnSQLInfo = split(' AS ', $reportColumnSQL);
+						$reportColumnSQLInfo = explode(' AS ', $reportColumnSQL);
 
 						if($aggregateFunction == 'AVG') {	// added as mysql will ignore null values
 							$label = "`".$this->reportRun->replaceSpecialChar($reportColumnSQLInfo[1]).'_AVG'."`";
@@ -155,7 +158,7 @@ abstract class Base_Chart extends Vtiger_Base_Model{
 						$fieldModel->set('reportlabel', $this->reportRun->replaceSpecialChar($label));
 					} else {
 						$reportColumn = $referenceFieldReportColumnSQL;
-						$groupColumnSQLInfo = split(' AS ', $referenceFieldReportColumnSQL);
+						$groupColumnSQLInfo = explode(' AS ', $referenceFieldReportColumnSQL);
 						$fieldModel->set('reportlabel', $this->reportRun->replaceSpecialChar($groupColumnSQLInfo[1]));
 						$fieldModel->set('reportcolumn', $this->reportRun->replaceSpecialChar($reportColumn));
 					}
@@ -168,7 +171,7 @@ abstract class Base_Chart extends Vtiger_Base_Model{
 				}
 			}
 		}
-		if($fieldModels) $this->fieldModels = $fieldModels;
+		if(isset($fieldModels) && $fieldModels) $this->fieldModels = $fieldModels;
 	}
 
 	function setGroupByColumns($columns) {
@@ -187,13 +190,13 @@ abstract class Base_Chart extends Vtiger_Base_Model{
 						$fieldModel->set('reportcolumn', $this->reportRun->replaceSpecialChar($reportColumnSQL));
 						// Added support for date and date time fields with Year and Month support
 						if($columnInfo[4] == 'D' || $columnInfo[4] == 'DT') {
-							$reportColumnSQLInfo = split(' AS ', $reportColumnSQL);
+							$reportColumnSQLInfo = explode(' AS ', $reportColumnSQL);
 							$fieldModel->set('reportlabel', trim($this->reportRun->replaceSpecialChar($reportColumnSQLInfo[1]), '\'')); // trim added as single quote on labels was not grouping properly
 						} else {
 							$fieldModel->set('reportlabel', $this->reportRun->replaceSpecialChar($columnInfo[2]));
 						}
 					} else {
-						$groupColumnSQLInfo = split(' AS ', $referenceFieldReportColumnSQL);
+						$groupColumnSQLInfo = explode(' AS ', $referenceFieldReportColumnSQL);
 						$fieldModel->set('reportlabel', trim($this->reportRun->replaceSpecialChar($groupColumnSQLInfo[1]), '\''));
 						$fieldModel->set('reportcolumn', $this->reportRun->replaceSpecialChar($referenceFieldReportColumnSQL));
 					}
@@ -322,7 +325,7 @@ abstract class Base_Chart extends Vtiger_Base_Model{
 			}
 		}
 
-		$sql = split(' from ', $this->reportRun->sGetSQLforReport($reportModel->getId(), $advFilterSql, 'PDF'), 2);
+		$sql = explode(' from ', $this->reportRun->sGetSQLforReport($reportModel->getId(), $advFilterSql, 'PDF'), 2);
 
 		$columnLabels = array();
 
@@ -359,37 +362,65 @@ abstract class Base_Chart extends Vtiger_Base_Model{
 
 		$filter = $reportRunObject->getAdvFilterList($reportModel->getId(), true);
 
-		// Special handling for date fields
-		$comparator = 'e';
-		$dataFieldInfo = @explode(':', $field);
-		if(($dataFieldInfo[4] == 'D' || $dataFieldInfo[4] == 'DT') && !empty($dataFieldInfo[5])) {
-			$dataValue = explode(' ',$value);
-			if(count($dataValue) > 1) {
-				$comparator = 'bw';
-				if($dataFieldInfo[4] == 'D') {
-					$value = date('Y-m-d', strtotime($value)).','.date('Y-m-d', strtotime('last day of'.$value));
-				} else {
-					$value = date('Y-m-d H:i:s' ,strtotime($value)).','.date('Y-m-d' ,strtotime('last day of'.$value)).' 23:59:59';
-				}
-			} else {
-				$comparator = 'bw';
-				if($dataFieldInfo[4] == 'D') {
-					$value = date('Y-m-d', strtotime('first day of JANUARY '.$value)).','.date('Y-m-d', strtotime('last day of DECEMBER '.$value));
-				} else {
-					$value = date('Y-m-d H:i:s' ,strtotime('first day of JANUARY '.$value)).','.date('Y-m-d' ,strtotime('last day of DECEMBER '.$value)).' 23:59:59';
-				}
-			}
-		} elseif($dataFieldInfo[4] == 'DT') {
-			$value = Vtiger_Date_UIType::getDisplayDateTimeValue($value);
-		}
+                // Special handling for date fields
+                $comparator = 'e';
+                $dataFieldInfo = @explode(':', $field);
+                if (($dataFieldInfo[4] == 'D' || $dataFieldInfo[4] == 'DT') && !empty($dataFieldInfo[5]) && !empty($value)) {
+                    $dataValue = explode(' ', $value);
+                    if ($dataFieldInfo[5] == 'WY') {//click through handling for group by week.
+                        $comparator = 'bw';
+                        $dateRange = getWeekDateRange($value);
+                        if ($dataFieldInfo[4] == 'D') {
+                            $value = $dateRange[0] . ',' . $dateRange[1];
+                        } else {
+                            $value = $dateRange[0] . ' 00:00:00' . ',' . $dateRange[1] . ' 23:59:59';
+                        }
+                    } else if ($dataFieldInfo[5] == 'DD') { // click through handling for group by day
+                        $comparator = 'bw';
+                        $value = date('Y-m-d H:i:s', strtotime($value)) . ',' . date('Y-m-d', strtotime($value)) . ' 23:59:59';
+                    } else if (php7_count($dataValue) > 1) {
+                        $comparator = 'bw';
+                        if ($dataFieldInfo[4] == 'D') {
+                            $value = date('Y-m-d', strtotime($value)) . ',' . date('Y-m-d', strtotime('last day of' . $value));
+                        } else {
+                            $value = date('Y-m-d H:i:s', strtotime($value)) . ',' . date('Y-m-d', strtotime('last day of' . $value)) . ' 23:59:59';
+                        }
+                    } else {
+                        $comparator = 'bw';
+                        if ($dataFieldInfo[4] == 'D') {
+                            $value = date('Y-m-d', strtotime('first day of JANUARY ' . $value)) . ',' . date('Y-m-d', strtotime('last day of DECEMBER ' . $value));
+                        } else {
+                            $value = date('Y-m-d H:i:s', strtotime('first day of JANUARY ' . $value)) . ',' . date('Y-m-d', strtotime('last day of DECEMBER ' . $value)) . ' 23:59:59';
+                        }
+                    }
 
-		if(empty($value)) {
-			$comparator = 'empty';
-		}
+                    //Converting value to user format.
+                    $valueParts = explode(',', $value);
+                    foreach ($valueParts as $key => $valuePart) {
+                        if ($dataFieldInfo[4] == 'DT') {
+                            $value = explode(' ', trim($valuePart));
+                            $date = new DateTimeField($value[0]);
+                            $valueParts[$key] = $date->getDisplayDate();
+                        } else {
+                            $valueParts[$key] = Vtiger_Date_UIType::getDisplayDateValue(trim($valuePart));
+                        }
+                    }
+                    $value = implode(',', $valueParts);
+                } elseif ($dataFieldInfo[4] == 'DT') {
+                    if (!empty($value) && $value != '0000-00-00 00:00:00') {
+                        $value = Vtiger_Date_UIType::getDisplayDateTimeValue($value);
+                    }
+                    $value .= "," . $value;
+                } elseif ($dataFieldInfo[4] == 'D' && empty($dataFieldInfo[5]) && !empty($value)) {
+                    $value = Vtiger_Date_UIType::getDisplayDateValue($value);
+                }
+                if (empty($value)) {
+                    $comparator = 'empty';
+                }
 
 		$advancedFilterConditions = $reportModel->transformToNewAdvancedFilter();
 		//Step 1. Add the filter condition for the field
-		if(count($advancedFilterConditions[1]['columns']) < 1) {
+		if(php7_count($advancedFilterConditions[1]['columns']) < 1) {
 			//If count is less than 1 that means there is only ANY conditions in report. There is no ALL conditions selected.
 			$groupCondition = array();
 			$groupCondition['columns'][] = array(
@@ -449,8 +480,8 @@ abstract class Base_Chart extends Vtiger_Base_Model{
 		$selectedDataFields = $chartModel->get('datafields');
 		$dataTypes = array();
 		foreach ($selectedDataFields as $dataField) {
-			list($tableName, $columnName, $moduleField, $fieldName, $single) = split(':', $dataField);
-			list($relModuleName, $fieldLabel) = split('_', $moduleField);
+			list($tableName, $columnName, $moduleField, $fieldName, $single) = explode(':', $dataField);
+			list($relModuleName, $fieldLabel) = explode('_', $moduleField);
 			$relModuleModel = Vtiger_Module_Model::getInstance($relModuleName);
 			$fieldModel = Vtiger_Field_Model::getInstance($fieldName, $relModuleModel);
 			if ($fieldModel) {
@@ -468,7 +499,8 @@ class PieChart extends Base_Chart {
 	function generateData(){
 		$db = PearDatabase::getInstance();
 		$values = array();
-
+		$labels = array();
+		$links = array();
 		$chartSQL = $this->getQuery();
 		$result = $db->pquery($chartSQL, array());
 		$rows = $db->num_rows($result);
@@ -680,7 +712,7 @@ class VerticalbarChart extends Base_Chart {
 		$data = array(	'labels' => $labels,
 						'values' => $values,
 						'links' => $links,
-						'type' => (count($values[0]) == 1) ? 'singleBar' : 'multiBar',
+						'type' => (php7_count($values[0]) == 1) ? 'singleBar' : 'multiBar',
 						'data_labels' => $this->getDataLabels(),
 						'data_type' => $this->getDataTypes(),
 						'graph_label' => $this->getGraphLabel()

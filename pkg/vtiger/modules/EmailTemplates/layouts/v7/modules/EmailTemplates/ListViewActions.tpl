@@ -30,7 +30,7 @@
                     <button type="button" class="btn btn-default viewType" title="{vtranslate('LBL_THUMBNAIL_VIEW',$MODULE)}" data-mode="grid" {if $VIEWTYPE eq 'grid'} disabled="disabled" {/if}><i class="fa fa-th-large"></i></button>
                 </div>
                 <div class="btn-group">
-                {if $editAction}
+                {if isset($editAction) && $editAction}
                     <button type="button" class="btn btn-default" id={$MODULE}_listView_massAction_{$editAction->getLabel()} 
                             {if stripos($editAction->getUrl(), 'javascript:')===0} href="javascript:void(0);" onclick='{$editAction->getUrl()|substr:strlen("javascript:")}'{else} href='{$editAction->getUrl()}' {/if} title="{vtranslate('LBL_EDIT', $MODULE)}">
                         <i class="fa fa-pencil"></i>
@@ -42,7 +42,7 @@
                         <i class="fa fa-trash"></i>
                     </button>
                 {/if}
-                {if $commentAction}
+                {if isset($commentAction) && $commentAction}
                     <button type="button" class="btn btn-default" id="{$MODULE}_listView_massAction_{$commentAction->getLabel()}" 
                             onclick="Vtiger_List_Js.triggerMassAction('{$commentAction->getUrl()}')" title="{vtranslate('LBL_COMMENT', $MODULE)}">
                         <i class="fa fa-comment"></i>
@@ -51,7 +51,7 @@
                 
                 
 
-                {if count($LISTVIEW_MASSACTIONS_1) gt 0 or $LISTVIEW_LINKS['LISTVIEW']|@count gt 0}
+                {if php7_count($LISTVIEW_MASSACTIONS_1) gt 0 or $LISTVIEW_LINKS['LISTVIEW']|@count gt 0}
                     <div class="btn-group listViewMassActions" role="group">
                         <button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown">
                             {vtranslate('LBL_MORE','Vtiger')}&nbsp;
@@ -61,7 +61,7 @@
                             {foreach item=LISTVIEW_MASSACTION from=$LISTVIEW_MASSACTIONS_1 name=advancedMassActions}
                                 <li><a id="{$MODULE}_listView_massAction_{Vtiger_Util_Helper::replaceSpaceWithUnderScores($LISTVIEW_MASSACTION->getLabel())}" {if stripos($LISTVIEW_MASSACTION->getUrl(), 'javascript:')===0} href="javascript:void(0);" onclick='{$LISTVIEW_MASSACTION->getUrl()|substr:strlen("javascript:")};'{else} href='{$LISTVIEW_MASSACTION->getUrl()}' {/if}>{vtranslate($LISTVIEW_MASSACTION->getLabel(), $MODULE)}</a></li>
                             {/foreach}
-                            {if count($LISTVIEW_MASSACTIONS_1) gt 0 and $LISTVIEW_LINKS['LISTVIEW']|@count gt 0}
+                            {if php7_count($LISTVIEW_MASSACTIONS_1) gt 0 and $LISTVIEW_LINKS['LISTVIEW']|@count gt 0}
                                 <li class="divider"></li>
                             {/if}
                             <li>

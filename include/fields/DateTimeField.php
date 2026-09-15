@@ -13,6 +13,8 @@ class DateTimeField {
 
 	static protected $databaseTimeZone = null;
 	protected $datetime;
+	protected $date;
+	protected $time;
 	private static $cache = array();
 
 	/**
@@ -36,7 +38,7 @@ class DateTimeField {
 		global $log;
 		$log->debug("Entering getDBInsertDateValue(" . $this->datetime . ") method ...");
 		$value = explode(' ', $this->datetime);
-		if (count($value) == 2) {
+		if (php7_count($value) == 2) {
 			$value[0] = self::convertToUserFormat($value[0]);
 		}
 
@@ -84,7 +86,7 @@ class DateTimeField {
                 $user = $current_user;
         }
 
-        $format = $current_user->date_format;
+        $format = isset($current_user->date_format)? $current_user->date_format : "";
         if (empty($format)) {
             if (false === strpos($date, '-')) {
                 if(false === strpos($date, '.')){
@@ -109,8 +111,11 @@ class DateTimeField {
      */
     public static function __convertToDBFormat($date, $format)
     {
-        $dbDate = '';
-        if (empty($format)) {
+	$dbDate = '';
+	if (4 === strpos($date, '-')) {
+	    // adjust format based on date value (could happen during edit-save)
+	    $format = "yyyy-mm-dd";
+	} else if (empty($format)) {
             if (false === strpos($date, '-')) {
                 if(false === strpos($date, '.')){
                     $format = 'dd/mm/yyyy';
@@ -119,8 +124,8 @@ class DateTimeField {
                 }
             } else {
                 $format = 'dd-mm-yyyy';
-            }
-        }
+	    }
+	}
         switch ($format) {
             case 'dd.mm.yyyy':
                 list($d, $m, $y) = explode('.', $date);
@@ -132,11 +137,15 @@ class DateTimeField {
                 list($d, $m, $y) = explode('-', $date);
                 break;
             case 'mm-dd-yyyy':
-                list($m, $d, $y) = explode('-', $date);
-                break;
+				if (substr_count($date, '-') == 2) {
+					list($m, $d, $y) = explode('-', $date);
+				}
+				break;
             case 'yyyy-mm-dd':
-                list($y, $m, $d) = explode('-', $date);
-                break;
+				if (substr_count($date, '-') == 2) {
+					list($y, $m, $d) = explode('-', $date);
+				}
+				break;
         }
 
         if (!empty($y) && !empty($m) && !empty($d)) {
@@ -170,7 +179,7 @@ class DateTimeField {
 		if(empty($user)) {
 			$user = $current_user;
 		}
-		$format = $user->date_format;
+		$format = isset($user->date_format) ? $user->date_format : "";
 		if(empty($format)) {
 			$format = 'dd-mm-yyyy';
 		}
@@ -187,7 +196,10 @@ class DateTimeField {
     public static function __convertToUserFormat($date, $format)
     {
         $date = self::convertToInternalFormat($date);
-        list($y, $m, $d) = explode('-', $date[0]);
+		$dates=explode('-', $date[0]);
+		$y=isset($dates[0])?$dates[0]:'';
+		$m=isset($dates[1])?$dates[1]:'';
+		$d=isset($dates[2])?$dates[2]:'';
 
         switch ($format) {
             case 'dd.mm.yyyy':
@@ -219,7 +231,7 @@ class DateTimeField {
                 break;
         }
 
-        if ($date[1] != '') {
+        if (php7_count($date) > 1 && $date[1] != '') {
             $userDate = $date[0] . ' ' . $date[1];
         } else {
             $userDate = $date[0];
@@ -273,7 +285,7 @@ class DateTimeField {
 			// create datetime object for given time in source timezone
 			$sourceTimeZone = new DateTimeZone($sourceTimeZoneName);
 			if($time == '24:00') $time = '00:00';
-			$myDateTime = new DateTime($time, $sourceTimeZone);
+			$myDateTime = new DateTime(isset($time) ? $time : '', $sourceTimeZone);
 
 			// convert this to target timezone using the DateTimeZone object
 			$targetTimeZone = new DateTimeZone($targetTimeZoneName);
@@ -307,7 +319,7 @@ class DateTimeField {
 		$log->debug("Entering getDisplayDate(" . $this->datetime . ") method ...");
 
 		$date_value = explode(' ',$this->datetime);
-		if ($date_value[1] != '') {
+		if (php7_count($date_value) > 1 && $date_value[1] != '') {
 			$date = self::convertToUserTimeZone($this->datetime, $user);
 			$date_value = $date->format('Y-m-d');
 		}
@@ -351,7 +363,7 @@ class DateTimeField {
 		if(empty($user)) {
 			$user = $current_user;
 		}
-		return str_replace(array('yyyy', 'mm','dd'), array('Y', 'm', 'd'), $user->date_format);
+		return str_replace(array('yyyy', 'mm','dd'), array('Y', 'm', 'd'), isset($user->date_format)? $user->date_format : "");
 	}
 
 	private static function sanitizeDate($value, $user) {
@@ -365,8 +377,9 @@ class DateTimeField {
 		$d = false;
 		$time = false;
 
-		if($user->date_format) {
-			list($date, $time) = explode(' ', $value);
+		/* If date-value is other than yyyy-mm-dd */
+		if(strpos($value, "-") < 4 && isset($user->date_format) && $user->date_format) {
+			list($date, $time) = explode(' ', strpos($value, ' ') ? $value : "$value ");
 			if(!empty($date)) {
 				switch ($user->date_format) {
 					case 'mm.dd.yyyy': list($m, $d, $y) = explode('.', $date); break;
@@ -378,7 +391,7 @@ class DateTimeField {
 				}
 			}
 			if ($y) {
-				$value = "$y-$m-$d ".rtrim($time);
+				$value = "$y-$m-$d ".rtrim($time ? $time : '');
 			}
 		}
 		return $value;

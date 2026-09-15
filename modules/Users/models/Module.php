@@ -26,7 +26,7 @@ class Users_Module_Model extends Vtiger_Module_Model {
 				$currentUser = Users_Record_Model::getCurrentUserModel();
 				$overRideQuery = $overRideQuery. $condition;
 				$allSubordinates = $currentUser->getAllSubordinatesByReportsToField($record);
-				if(count($allSubordinates) > 0) {
+				if(php7_count($allSubordinates) > 0) {
 					$overRideQuery .= " AND vtiger_users.id NOT IN (". implode(',',$allSubordinates) .")"; // do not allow the subordinates
 				}
 			}
@@ -52,7 +52,7 @@ class Users_Module_Model extends Vtiger_Module_Model {
 			$params = array("%$searchValue%", 'Active');
 
 			// do not allow the subordinates
-			if(count($allSubordinates) > 0) {
+			if(php7_count($allSubordinates) > 0) {
 				$query .= " AND vtiger_users.id NOT IN (". implode(',',$allSubordinates) .")";
 			}
 
@@ -126,11 +126,15 @@ class Users_Module_Model extends Vtiger_Module_Model {
 	*/
 	public function updateBaseCurrency($currencyName) {
 		$db = PearDatabase::getInstance();
-		$result = $db->pquery('SELECT currency_code, currency_symbol FROM vtiger_currencies WHERE currency_name = ?', array($currencyName));
+		$result = $db->pquery('SELECT currency_code, currency_symbol, currency_name FROM vtiger_currencies WHERE currency_name = ?', array($currencyName));
 		$num_rows = $db->num_rows($result);
 		if ($num_rows > 0) {
 			$currency_code = decode_html($db->query_result($result, 0, 'currency_code'));
 			$currency_symbol = decode_html($db->query_result($result, 0,'currency_symbol'));
+			$currencyName = decode_html($db->query_result($result, 0, 'currency_name')); // rewrite actual from table.
+		} else {
+			// Invalid currency name.
+			return;
 		}
 		$this->updateConfigFile($currencyName);
 		//Updating Database
@@ -328,7 +332,7 @@ class Users_Module_Model extends Vtiger_Module_Model {
 		$blocksList = array('Edit'			=> array('block' => 'LBL_USER_MANAGEMENT', 'menu' => 'LBL_USERS'),
 							'Calendar'		=> array('block' => 'LBL_MY_PREFERENCES', 'menu' => 'Calendar Settings'),
 							'PreferenceEdit'=> array('block' => 'LBL_MY_PREFERENCES', 'menu' => 'My Preferences'));
-		return $blocksList[$viewName];
+		return isset($blocksList[$viewName]) ? $blocksList[$viewName] :null;
 	}
 
 	/**

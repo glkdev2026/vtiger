@@ -24,7 +24,7 @@ class Calendar_ExportData_Action extends Vtiger_ExportData_Action {
 		$moduleName = $request->getModule();
 		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
 
-		return $moduleModel->getExportQuery('');
+		return $moduleModel->getExportQuery(null, null);
 	}
 
 	/**
@@ -80,7 +80,7 @@ class Calendar_ExportData_Action extends Vtiger_ExportData_Action {
 		header("Content-Disposition: attachment; filename={$fileName}.ics");
 
 		$timeZone = new iCalendar_timezone;
-		$timeZoneId = split('/', date_default_timezone_get());
+		$timeZoneId = explode('/', date_default_timezone_get());
 
 		if(!empty($timeZoneId[1])) {
 			$zoneId = $timeZoneId[1];
@@ -98,12 +98,20 @@ class Calendar_ExportData_Action extends Vtiger_ExportData_Action {
 		}
 
 		$myiCal = new iCalendar;
+		$myiCal->add_property("prodid", "VTIGER-ICS"); // mandatory
 		$myiCal->add_component($timeZone);
 
 		while (!$result->EOF) {
 			$eventFields = $result->fields;
 			$id = $eventFields['activityid'];
 			$type = $eventFields['activitytype'];
+
+			// skip invalid data
+			if ($eventFields["date_start"] == "0000-00-00") {
+				$result->MoveNext();
+				continue;
+			}
+			
 			if($type != 'Task') {
 				$temp = $moduleModel->get('eventFields');
 				foreach($temp as $fieldName => $access) {
@@ -149,6 +157,8 @@ class Calendar_ExportData_Action extends Vtiger_ExportData_Action {
 				$iCalTask->assign_values($temp);
 			}
 
+			$iCalTask->add_property("uid", $id); // mandatory
+
 			$myiCal->add_component($iCalTask);
 			$result->MoveNext();
 		}
@@ -159,7 +169,7 @@ class Calendar_ExportData_Action extends Vtiger_ExportData_Action {
 		$query = parent::getExportQuery($request);
 
 		$queryComponents = preg_split('/ FROM /i', $query);
-		if (count($queryComponents) == 2) {
+		if (php7_count($queryComponents) == 2) {
 			$exportQuery = "$queryComponents[0], vtiger_activity.activityid FROM $queryComponents[1]";
 		}
 
@@ -167,7 +177,7 @@ class Calendar_ExportData_Action extends Vtiger_ExportData_Action {
 		$exportQuery = "$queryComponents[0] WHERE vtiger_activity.activitytype != 'Emails' AND $queryComponents[1]";
 
 		$orderByComponents = preg_split('/ ORDER BY /i', $exportQuery);
-		if (count($orderByComponents) == 1) {
+		if (php7_count($orderByComponents) == 1) {
 			$limitQuery = '';
 			if ($request->getMode() == 'ExportCurrentPage') {
 				list($exportQuery, $limitQuery) = preg_split('/ LIMIT /i', $exportQuery);

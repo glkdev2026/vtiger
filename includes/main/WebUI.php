@@ -8,10 +8,10 @@
  * All Rights Reserved.
  ************************************************************************************/
 
+require_once 'vendor/autoload.php';
 require_once 'include/utils/utils.php';
 require_once 'include/utils/CommonUtils.php';
 
-require_once 'includes/Loader.php';
 vimport ('includes.runtime.EntryPoint');
 
 class Vtiger_WebUI extends Vtiger_EntryPoint {
@@ -24,7 +24,7 @@ class Vtiger_WebUI extends Vtiger_EntryPoint {
 	protected function checkLogin (Vtiger_Request $request) {
 		if (!$this->hasLogin()) {
 			$return_params = $_SERVER['QUERY_STRING'];
-			if($return_params && !$_SESSION['return_params']) {
+			if(isset($return_params) && $return_params && !$_SESSION['return_params']) {
 				//Take the url that user would like to redirect after they have successfully logged in.
 				$return_params = urlencode($return_params);
 				Vtiger_Session::set('return_params', $return_params);
@@ -151,7 +151,7 @@ class Vtiger_WebUI extends Vtiger_EntryPoint {
 
 			if(empty($module)) {
 				if ($this->hasLogin()) {
-					$defaultModule = $currentUser->defaultlandingpage;
+					$defaultModule = isset($currentUser->defaultlandingpage) ? $currentUser->defaultlandingpage : null;
 					$moduleModel = Vtiger_Module_Model::getInstance($defaultModule);
 					if(!empty($defaultModule) && $defaultModule != 'Home' && $moduleModel && $moduleModel->isActive()) {
 						$module = $defaultModule; $qualifiedModuleName = $defaultModule; $view = 'List';

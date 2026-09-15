@@ -38,7 +38,7 @@ function getConvertSoToInvoice($focus,$so_focus,$soid)
 	$log->debug("Entering getConvertSoToInvoice(".get_class($focus).",".get_class($so_focus).",".$soid.") method ...");
     $log->info("in getConvertSoToInvoice ".$soid);
     $xyz=array('bill_street','bill_city','bill_code','bill_pobox','bill_country','bill_state','ship_street','ship_city','ship_code','ship_pobox','ship_country','ship_state');
-	for($i=0;$i<count($xyz);$i++){
+	for($i=0;$i<php7_count($xyz);$i++){
 		if (getFieldVisibilityPermission('SalesOrder', $current_user->id,$xyz[$i]) == '0'){
 			$so_focus->column_fields[$xyz[$i]] = $so_focus->column_fields[$xyz[$i]];
 		}
@@ -89,6 +89,7 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 	$log->debug("Entering getAssociatedProducts(".$module.",".get_class($focus).",".$seid."='') method ...");
 	global $adb;
 	$output = '';
+	$taxtype = '';
 	global $theme,$current_user;
 
 	$no_of_decimal_places = getCurrencyDecimalPlaces();
@@ -235,7 +236,7 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 			$product_Detail[$i]['delRow'.$i]="Del";
 		}
 
-		if (in_array($module, $lineItemSupportedModules) || $module === 'Vendors' || (!$focus->mode && $seid)) {
+		if (in_array($module, $lineItemSupportedModules) || $module === 'Vendors' || (!isset($focus->mode) && $seid) || (!$focus->mode && $seid)) {
 			$subProductsQuery = 'SELECT vtiger_seproductsrel.crmid AS prod_id, quantity FROM vtiger_seproductsrel
 								 INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_seproductsrel.crmid
 								 INNER JOIN vtiger_products ON vtiger_products.productid = vtiger_seproductsrel.crmid
@@ -248,6 +249,7 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 			array_push($subParams, 'Products');
 		} else {
 			$subProductsQuery = 'SELECT productid AS prod_id, quantity FROM vtiger_inventorysubproductrel WHERE id=? AND sequence_no=?';
+			$focus->id = isset($focus->id) ? $focus->id : "";
 			$subParams = array($focus->id, $i);
 		}
 		$subProductsResult = $adb->pquery($subProductsQuery, $subParams);
@@ -276,7 +278,7 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 		$product_Detail[$i]['hdnProductId'.$i] = $hdnProductId;
 		$product_Detail[$i]['productName'.$i] = from_html($productname);
 		/* Added to fix the issue Product Pop-up name display*/
-		if($_REQUEST['action'] == 'CreateSOPDF' || $_REQUEST['action'] == 'CreatePDF' || $_REQUEST['action'] == 'SendPDFMail')
+		if((isset($_REQUEST['action'])) && ($_REQUEST['action'] == 'CreateSOPDF' || $_REQUEST['action'] == 'CreatePDF' || $_REQUEST['action'] == 'SendPDFMail'))
 			$product_Detail[$i]['productName'.$i]= htmlspecialchars($product_Detail[$i]['productName'.$i]);
 		$product_Detail[$i]['hdnProductcode'.$i] = $hdnProductcode;
 		$product_Detail[$i]['productDescription'.$i]= from_html($productdescription);
@@ -285,7 +287,7 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 		}else {
             $product_Detail[$i]['comment'.$i]= $comment;
 		}
-
+		$focus->object_name=isset($focus->object_name) ? $focus->object_name : '';
 		if($module != 'PurchaseOrder' && $focus->object_name != 'Order') {
 			$product_Detail[$i]['qtyInStock'.$i]=decimalFormat($qtyinstock);
 		}
@@ -301,7 +303,7 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 		}
 		$discount_percent = decimalFormat($adb->query_result($result,$i-1,'discount_percent'));
 		$discount_amount = $adb->query_result($result,$i-1,'discount_amount');
-		$discount_amount = decimalFormat(number_format($discount_amount, $no_of_decimal_places,'.',''));
+		$discount_amount = isset($discount_amount) ? decimalFormat(number_format($discount_amount, $no_of_decimal_places,'.','')):"";
 		$discountTotal = 0;
 		//Based on the discount percent or amount we will show the discount details
 
@@ -365,7 +367,7 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 			$regionsList[$taxInfo['taxid']] = $regionsInfo;
 		}
 		//Now retrieve the tax values from the current query with the name
-		for($tax_count=0;$tax_count<count($tax_details);$tax_count++)
+		for($tax_count=0;$tax_count<php7_count($tax_details);$tax_count++)
 		{
 			$tax_name = $tax_details[$tax_count]['taxname'];
 			$tax_label = $tax_details[$tax_count]['taxlabel'];
@@ -404,12 +406,12 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 	$finalDiscount = 0;
 	$product_Detail[1]['final_details']['discount_type_final'] = 'zero';
 
-	$subTotal = ($focus->column_fields['hdnSubTotal'] != '')?$focus->column_fields['hdnSubTotal']:0;
+	$subTotal = (isset($focus->column_fields['hdnSubTotal']) && $focus->column_fields['hdnSubTotal'] != '') ? $focus->column_fields['hdnSubTotal'] : 0;
 	$subTotal = number_format($subTotal, $no_of_decimal_places,'.','');
 
 	$product_Detail[1]['final_details']['hdnSubTotal'] = $subTotal;
-	$discountPercent = ($focus->column_fields['hdnDiscountPercent'] != '')?$focus->column_fields['hdnDiscountPercent']:0;
-	$discountAmount = ($focus->column_fields['hdnDiscountAmount'] != '')?$focus->column_fields['hdnDiscountAmount']:0;
+	$discountPercent = (isset($focus->column_fields['hdnDiscountPercent']) &&  $focus->column_fields['hdnDiscountPercent'] != '') ? $focus->column_fields['hdnDiscountPercent'] : 0;
+	$discountAmount = (isset($focus->column_fields['hdnDiscountAmount']) && $focus->column_fields['hdnDiscountAmount'] != '') ? $focus->column_fields['hdnDiscountAmount'] : 0;
     if($discountPercent != '0'){
         $discountAmount = ($product_Detail[1]['final_details']['hdnSubTotal'] * $discountPercent / 100);
     }
@@ -420,8 +422,8 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
     $product_Detail[1]['final_details']['discount_percentage_final'] = 0;
 	$product_Detail[1]['final_details']['discount_amount_final'] = $discount_amount_final;
 
-	$hdnDiscountPercent = (float) $focus->column_fields['hdnDiscountPercent'];
-	$hdnDiscountAmount	= (float) $focus->column_fields['hdnDiscountAmount'];
+		$hdnDiscountPercent = isset($focus->column_fields['hdnDiscountPercent']) ? (float) $focus->column_fields['hdnDiscountPercent'] : 0.0;
+		$hdnDiscountAmount	= isset($focus->column_fields['hdnDiscountAmount']) ? (float) $focus->column_fields['hdnDiscountAmount'] : 0.0;
 
 	if(!empty($hdnDiscountPercent)) {
 		$finalDiscount = ($subTotal*$discountPercent/100);
@@ -449,7 +451,7 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 	$tax_details = getAllTaxes('available','','edit',$focus->id);
 	$taxDetails = array();
 
-	for($tax_count=0;$tax_count<count($tax_details);$tax_count++)
+	for($tax_count=0;$tax_count<php7_count($tax_details);$tax_count++)
 	{
 		if ($tax_details[$tax_count]['method'] === 'Deducted') {
 			continue;
@@ -468,9 +470,11 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 		if($tax_percent == '' || $tax_percent == 'NULL')
 			$tax_percent = 0;
 		$taxamount = ($subTotal-$finalDiscount)*$tax_percent/100;
-        list($before_dot, $after_dot) = explode('.', $taxamount);
-        if($after_dot[$no_of_decimal_places] == 5) {
-            $taxamount = round($taxamount, $no_of_decimal_places, PHP_ROUND_HALF_DOWN); 
+		$split_taxamounts =explode('.', $taxamount);
+		$before_dot=isset($split_taxamounts[0]) ? $split_taxamounts[0] : '';
+		$after_dot=isset($split_taxamounts[1]) ? $split_taxamounts[1] : '';
+        if(isset($after_dot[$no_of_decimal_places]) && $after_dot[$no_of_decimal_places] == 5) {
+            $taxamount = round($taxamount, $no_of_decimal_places, PHP_ROUND_HALF_UP); 
         } else {
             $taxamount = number_format($taxamount, $no_of_decimal_places,'.','');
         }
@@ -521,7 +525,7 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 	$product_Detail[1]['final_details']['tax_totalamount'] = number_format($taxTotal, $no_of_decimal_places, '.', '');
 
 	//To set the Shipping & Handling charge
-	$shCharge = ($focus->column_fields['hdnS_H_Amount'] != '')?$focus->column_fields['hdnS_H_Amount']:0;
+	$shCharge = (isset($focus->column_fields['hdnS_H_Amount']) && $focus->column_fields['hdnS_H_Amount'] != '') ? $focus->column_fields['hdnS_H_Amount'] : 0;
 	$shCharge = number_format($shCharge, $no_of_decimal_places,'.','');
 	$product_Detail[1]['final_details']['shipping_handling_charge'] = $shCharge;
 
@@ -532,14 +536,14 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 	$shtax_details = getAllTaxes('available','sh','edit',$focus->id);
 
 	//if taxtype is group then the tax should be same for all products in vtiger_inventoryproductrel table
-	for($shtax_count=0;$shtax_count<count($shtax_details);$shtax_count++)
+	for($shtax_count=0;$shtax_count<php7_count($shtax_details);$shtax_count++)
 	{
 		$shtax_name = $shtax_details[$shtax_count]['taxname'];
 		$shtax_label = $shtax_details[$shtax_count]['taxlabel'];
 		$shtax_percent = 0;
 		//if condition is added to call this function when we create PO/SO/Quotes/Invoice from Product module
 		if (in_array($module, $inventoryModules)) {
-			$shtax_percent = getInventorySHTaxPercent($focus->id,$shtax_name);
+			$shtax_percent = getInventorySHTaxPercent($focus->id,$shtax_name,$shtax_count);
 		}
 		$shtaxamount = $shCharge*$shtax_percent/100;
 		$shtaxtotal = $shtaxtotal + $shtaxamount;
@@ -557,12 +561,12 @@ function getAssociatedProducts($module, $focus, $seid = '', $refModuleName = fal
 	$product_Detail[1]['final_details']['shtax_totalamount'] = $shtaxtotal;
 
 	//To set the Adjustment value
-	$adjustment = ($focus->column_fields['txtAdjustment'] != '')?$focus->column_fields['txtAdjustment']:0;
+	$adjustment = (isset($focus->column_fields['txtAdjustment']) && $focus->column_fields['txtAdjustment'] != '') ? $focus->column_fields['txtAdjustment'] : 0;
 	$adjustment = number_format($adjustment, $no_of_decimal_places,'.','');
 	$product_Detail[1]['final_details']['adjustment'] = $adjustment;
 
 	//To set the grand total
-	$grandTotal = ($focus->column_fields['hdnGrandTotal'] != '')?$focus->column_fields['hdnGrandTotal']:0;
+	$grandTotal = (isset($focus->column_fields['hdnGrandTotal']) && $focus->column_fields['hdnGrandTotal'] != '')?$focus->column_fields['hdnGrandTotal']:0;
 	$grandTotal = number_format($grandTotal, $no_of_decimal_places,'.','');
 	$product_Detail[1]['final_details']['grandTotal'] = $grandTotal;
 
@@ -584,7 +588,7 @@ function split_validationdataArray($validationData)
 	$fieldName = '';
 	$fieldLabel = '';
 	$fldDataType = '';
-	$rows = count($validationData);
+	$rows = php7_count($validationData);
 	foreach($validationData as $fldName => $fldLabel_array)
 	{
 		if($fieldName == '')

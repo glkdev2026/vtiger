@@ -96,6 +96,7 @@ class HelpDesk extends CRMEntity {
 	// For Alphabetical search
 	var $def_basicsearch_col = 'ticket_title';
 
+
 	//var $groupTable = Array('vtiger_ticketgrouprelation','ticketid');
 
 	/**	Constructor which will set the column_fields in this object
@@ -122,9 +123,9 @@ class HelpDesk extends CRMEntity {
 		$this->insertIntoAttachment($this->id,$module);
 
 		//service contract update
-		$return_action = $_REQUEST['return_action'];
-		$for_module = $_REQUEST['return_module'];
-		$for_crmid  = $_REQUEST['return_id'];
+		$return_action = isset($_REQUEST['return_action']) ? $_REQUEST['return_action'] : "";
+		$for_module = isset($_REQUEST['return_module']) ? $_REQUEST['return_module'] : "";
+		$for_crmid  = isset($_REQUEST['return_id']) ? $_REQUEST['return_id'] : "";
 		if ($return_action && $for_module && $for_crmid) {
 			if ($for_module == 'ServiceContracts') {
 				$on_focus = CRMEntity::getInstance($for_module);
@@ -183,7 +184,7 @@ class HelpDesk extends CRMEntity {
 
 		$file_saved = false;
 		
-		if(count($_FILES)) {
+		if(php7_count($_FILES)) {
 			foreach($_FILES as $fileindex => $files)
 			{
 				if($files['name'] != '' && $files['size'] > 0)
@@ -282,7 +283,7 @@ class HelpDesk extends CRMEntity {
 		$result=$adb->pquery($query, array($ticketid));
 		$update_log = $adb->query_result($result,0,"update_log");
 
-		$splitval = split('--//--',trim($update_log,'--//--'));
+		$splitval = explode('--//--', trim($update_log, '--//--'));
 
 		$header[] = $adb->query_result($result,0,"title");
 
@@ -358,7 +359,7 @@ class HelpDesk extends CRMEntity {
 			$profileList = getCurrentUserProfileList();
 			$sql1 = "select vtiger_field.fieldid,fieldlabel from vtiger_field inner join vtiger_profile2field on vtiger_profile2field.fieldid=vtiger_field.fieldid inner join vtiger_def_org_field on vtiger_def_org_field.fieldid=vtiger_field.fieldid where vtiger_field.tabid=13 and vtiger_field.block <> 30 and vtiger_field.uitype <> '61' and vtiger_field.displaytype in (1,2,3,4) and vtiger_profile2field.visible=0 and vtiger_def_org_field.visible=0 and vtiger_field.presence in (0,2)";
 			$params1 = array();
-			if (count($profileList) > 0) {
+			if (php7_count($profileList) > 0) {
 				$sql1 .= " and vtiger_profile2field.profileid in (". generateQuestionMarks($profileList) .")  group by fieldid";
 				array_push($params1, $profileList);
 			}

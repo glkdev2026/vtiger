@@ -21,7 +21,7 @@
 function updateStk($product_id,$qty,$mode,$ext_prod_arr,$module)
 {
 	global $log;
-	$log->debug("Entering updateStk(".$product_id.",".$qty.",".$mode.",".$ext_prod_arr.",".$module.") method ...");
+	$log->debug("Entering updateStk(".$product_id.",".$qty.",".$mode.",".implode('',$ext_prod_arr).",".$module.") method ...");
 	global $adb;
 	global $current_user;
 
@@ -200,7 +200,8 @@ function getProductTaxPercentage($type,$productid,$default='')
 	if($current_user->truncate_trailing_zeros == true) {
 		$taxpercentage = decimalFormat($taxpercentage);
 	}
-	return array('percentage' => $taxpercentage, 'regions' => Zend_Json::decode(html_entity_decode($adb->query_result($res, $i, 'regions'))));
+	$regions=$adb->query_result($res,0, 'regions');
+	return array('percentage' => $taxpercentage, 'regions' => Zend_Json::decode(html_entity_decode(!empty($regions) ? $regions : '[]')));
 }
 
 /**	Function used to add the history entry in the relevant tables for PO, SO, Quotes and Invoice modules
@@ -266,6 +267,7 @@ function getAllTaxes($available='all', $sh='',$mode='',$id='')
 			}
 		} else {
 			//This where condition is added to get all products or only availble products
+			$where = "";
 			if ($available != 'all' && $available == 'available') {
 				$where = " WHERE $tablename.deleted=0";
 			}
@@ -303,14 +305,15 @@ function getAllTaxes($available='all', $sh='',$mode='',$id='')
 			}
 			//We are selecting taxes using that taxids. So It will get the tax even if the tax is disabled.
 			$where_ids = '';
-			if (count($result_ids) > 0) {
-				$insert_str = str_repeat("?,", count($result_ids) - 1);
+			if (php7_count($result_ids) > 0) {
+				$insert_str = str_repeat("?,", php7_count($result_ids) - 1);
 				$insert_str .= "?";
 				$where_ids = "taxid in ($insert_str) or";
 			}
 			$res = $adb->pquery("select * from $tablename  where $where_ids  deleted=0 order by taxid",$result_ids);
 		} else {
 			//This where condition is added to get all products or only availble products
+			$where = "";
 			if ($available != 'all' && $available == 'available') {
 				$where = " where $tablename.deleted=0";
 			}
@@ -381,7 +384,8 @@ function getTaxDetailsForProduct($productid, $available='all')
 			$tax_details[$i]['type']		= $adb->query_result($res, $i, 'type');
 			$tax_details[$i]['regions']		= Zend_Json::decode(html_entity_decode($adb->query_result($res, $i, 'taxregions')));
 			$tax_details[$i]['compoundon']	= Zend_Json::decode(html_entity_decode($adb->query_result($res, $i, 'compoundon')));
-			$tax_details[$i]['productregions']= Zend_Json::decode(html_entity_decode($adb->query_result($res, $i, 'productregions')));
+			$productregions=$adb->query_result($res, $i, 'productregions');
+			$tax_details[$i]['productregions']= Zend_Json::decode(html_entity_decode(!empty($productregions) ? $productregions : ''));
 		}
 	}
 	else
@@ -423,6 +427,7 @@ function deleteInventoryProductDetails($focus)
 			}
 		}
 	}
+	$focus->update_product_array=isset($focus->update_product_array) ? $focus->update_product_array :''; //to avoid undefined property warning.
 	$updateInventoryProductRel_update_product_array = $focus->update_product_array;
     $adb->pquery("delete from vtiger_inventoryproductrel where id=?", array($focus->id));
     $adb->pquery("delete from vtiger_inventorysubproductrel where id=?", array($focus->id));
@@ -435,6 +440,7 @@ function updateInventoryProductRel($entity) {
 	global $log, $adb,$updateInventoryProductRel_update_product_array,$updateInventoryProductRel_deduct_stock;
 	$entity_id = vtws_getIdComponents($entity->getId());
 	$entity_id = $entity_id[1];
+	$statusFieldName = '';
 	$update_product_array = $updateInventoryProductRel_update_product_array;
 	$log->debug("Entering into function updateInventoryProductRel(".$entity_id.").");
 
@@ -472,7 +478,7 @@ function updateInventoryProductRel($entity) {
 			$updateInventoryProductRel_deduct_stock = false;
 			deductProductsFromStock($entity_id);
 		}
-	} elseif($recordDetails[$statusFieldName] == $statusFieldValue) {
+	} elseif(isset($recordDetails[$statusFieldName]) && $recordDetails[$statusFieldName] == $statusFieldValue) {
 		$updateInventoryProductRel_deduct_stock = false;
 	}
 
@@ -611,6 +617,7 @@ function saveInventoryProductDetails(&$focus, $module, $update_prod_stock='false
 {
 	global $log, $adb;
 	$id=$focus->id;
+	$description='';
 	$log->debug("Entering into function saveInventoryProductDetails($module).");
 	//Added to get the convertid
 	if(isset($_REQUEST['convert_from']) && $_REQUEST['convert_from'] !='')
@@ -642,7 +649,7 @@ function saveInventoryProductDetails(&$focus, $module, $update_prod_stock='false
 	for($i=1; $i<=$tot_no_prod; $i++)
 	{
 		//if the product is deleted then we should avoid saving the deleted products
-		if($_REQUEST["deleted".$i] == 1)
+		if(isset($_REQUEST["deleted".$i]) && $_REQUEST["deleted".$i] == 1)
 			continue;
 
 	    $prod_id = vtlib_purify($_REQUEST['hdnProductId'.$i]);
@@ -661,8 +668,8 @@ function saveInventoryProductDetails(&$focus, $module, $update_prod_stock='false
         $qty = vtlib_purify($_REQUEST['qty'.$i]);
         $listprice = vtlib_purify($_REQUEST['listPrice'.$i]);
 		$comment = vtlib_purify($_REQUEST['comment'.$i]);
-		$purchaseCost = vtlib_purify($_REQUEST['purchaseCost'.$i]);
-		$margin = vtlib_purify($_REQUEST['margin'.$i]);
+		$purchaseCost = isset($_REQUEST['purchaseCost'.$i]) ? vtlib_purify($_REQUEST['purchaseCost'.$i]) : "";
+		$margin = isset($_REQUEST['margin'.$i]) ? vtlib_purify($_REQUEST['margin'.$i]) : "";
 
 		if($module == 'SalesOrder') {
 			if($updateDemand == '-')
@@ -684,7 +691,7 @@ function saveInventoryProductDetails(&$focus, $module, $update_prod_stock='false
 
 		$sub_prod_str = vtlib_purify($_REQUEST['subproduct_ids'.$i]);
 		if (!empty($sub_prod_str)) {
-			 $sub_prod = split(',', rtrim($sub_prod_str, ','));
+			 $sub_prod = explode(',', rtrim($sub_prod_str, ','));
 			 foreach ($sub_prod as $subProductInfo) {
 				 list($subProductId, $subProductQty) = explode(':', $subProductInfo);
 				 $query = 'INSERT INTO vtiger_inventorysubproductrel VALUES(?, ?, ?, ?)';
@@ -723,7 +730,7 @@ function saveInventoryProductDetails(&$focus, $module, $update_prod_stock='false
 		$compoundTaxesInfo = getCompoundTaxesInfoForInventoryRecord($focus->id, $module);
 		if($_REQUEST['taxtype'] == 'group')
 		{
-			for($tax_count=0;$tax_count<count($all_available_taxes);$tax_count++)
+			for($tax_count=0;$tax_count<php7_count($all_available_taxes);$tax_count++)
 			{
 				$taxDetails = $all_available_taxes[$tax_count];
 				if ($taxDetails['method'] === 'Deducted') {
@@ -751,7 +758,7 @@ function saveInventoryProductDetails(&$focus, $module, $update_prod_stock='false
 		else
 		{
 			$taxes_for_product = getTaxDetailsForProduct($prod_id,'all');
-			for($tax_count=0;$tax_count<count($taxes_for_product);$tax_count++)
+			for($tax_count=0;$tax_count<php7_count($taxes_for_product);$tax_count++)
 			{
 				$taxDetails = $taxes_for_product[$tax_count];
 				if ($taxDetails['method'] === 'Compound') {
@@ -772,17 +779,17 @@ function saveInventoryProductDetails(&$focus, $module, $update_prod_stock='false
 		}
 
 		//Adding deduct tax value to query
-		for($taxCount=0; $taxCount<count($all_available_taxes); $taxCount++) {
+		for($taxCount=0; $taxCount<php7_count($all_available_taxes); $taxCount++) {
 			if ($all_available_taxes[$taxCount]['method'] === 'Deducted') {
 				$taxName = $all_available_taxes[$taxCount]['taxname'];
 				$requestTaxName = $taxName.'_group_percentage';
 				$taxValue = 0;
-				if(isset($_REQUEST[$requestTaxName])) {
+				if(isset($_REQUEST[$requestTaxName]) && !empty($_REQUEST[$requestTaxName])) {
 					$taxValue = vtlib_purify($_REQUEST[$requestTaxName]);
 				}
 
 				$updatequery .= " $taxName = ?,";
-				array_push($updateparams, (-$taxValue));
+				array_push($updateparams, (-1 * $taxValue));
 			}
 		}
 
@@ -836,7 +843,7 @@ function saveInventoryProductDetails(&$focus, $module, $update_prod_stock='false
 
 	//if the user gave - sign in adjustment then add with the value
 	$adjustmentType = '';
-	if($_REQUEST['adjustmentType'] == '-')
+	if(isset($_REQUEST['adjustmentType']) && $_REQUEST['adjustmentType'] == '-')
 		$adjustmentType = vtlib_purify($_REQUEST['adjustmentType']);
 
 	$adjustment = vtlib_purify($_REQUEST['adjustment']);
@@ -967,7 +974,7 @@ function getInventoryProductTaxValue($id, $productId, $taxName, $lineItemId = 0)
  *	@param string $taxname - shipping and handling taxname
  *	@return float $taxpercentage - shipping and handling taxpercentage which is associated with the given entity
  */
-function getInventorySHTaxPercent($id, $taxname)
+function getInventorySHTaxPercent($id, $taxname, $taxnum=null)
 {
 	global $log, $adb;
 	$log->debug("Entering into function getInventorySHTaxPercent($id, $taxname)");
@@ -975,6 +982,22 @@ function getInventorySHTaxPercent($id, $taxname)
     $taxname = $taxname;
 	$res = $adb->pquery("select $taxname from vtiger_inventoryshippingrel where id= ?", array($id));
 	$taxpercentage = $adb->query_result($res,0,$taxname);
+
+	// If shipping details is not found then try to get the values from the vtiger_inventorychargesrel 
+	// where the actual shipping and handling tax info of particular record stored.
+	if($adb->num_rows($res) < 1){
+		$j=$taxnum+1;
+		// parse through the json detail and extract the value of specific tax.
+		$charges_result = $adb->pquery(
+            "SELECT JSON_UNQUOTE(JSON_EXTRACT(charges, CONCAT('$.\"1\".taxes.\"', ? ,'\"'))) as charges 
+             FROM vtiger_inventorychargesrel 
+             WHERE recordid = ?", 
+            array($taxnum + 1, $id)
+        );
+		$rowData = $adb->fetch_array($charges_result);
+		$charges = isset($rowData['charges']) ? Zend_Json::decode(html_entity_decode($rowData['charges'])):"";
+		$taxpercentage = $charges;
+	}
 
 	if($taxpercentage == '')
 		$taxpercentage = 0;
@@ -1177,7 +1200,7 @@ function getBaseConversionRateForProduct($productid, $mode='edit', $module='Prod
 	$res = $adb->pquery($sql, $params);
 	$conv_rate = $adb->query_result($res, 0, 'conversion_rate');
 
-	return 1 / $conv_rate;
+	return $conv_rate ? (1 / $conv_rate) : 1;
 }
 
 /**	Function used to get the prices for the given list of products based in the specified currency
@@ -1189,7 +1212,7 @@ function getPricesForProducts($currencyid, $product_ids, $module='Products', $sk
 	global $adb,$log,$current_user;
 
 	$price_list = array();
-	if (count($product_ids) > 0) {
+	if (php7_count($product_ids) > 0) {
 		if ($module == 'Services') {
 			$query = "SELECT vtiger_currency_info.id, vtiger_currency_info.conversion_rate, " .
 					"vtiger_service.serviceid AS productid, vtiger_service.unit_price, " .
@@ -1437,7 +1460,7 @@ function isRecordExistInDB($fieldData, $moduleMeta, $user) {
 				} else {
 					$fieldValueDetails = $fieldValue;
 				}
-				if (count($fieldValueDetails) > 1) {
+				if (php7_count($fieldValueDetails) > 1) {
 					$referenceModuleName = trim($fieldValueDetails[0]);
 					$entityLabel = trim($fieldValueDetails[1]);
 					$entityId = getEntityId($referenceModuleName, decode_html($entityLabel));

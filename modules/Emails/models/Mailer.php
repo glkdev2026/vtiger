@@ -12,8 +12,11 @@ include_once 'include/simplehtmldom/simple_html_dom.php';
 include_once 'libraries/InStyle/InStyle.php';
 include_once 'libraries/ToAscii/ToAscii.php';
 include_once 'include/database/PearDatabase.php';
-
+#[\AllowDynamicProperties]
 class Emails_Mailer_Model extends Vtiger_Mailer {
+
+	private $dom = null;
+	public $Signature;
 
 	public static function getInstance() {
 		return new self();
@@ -32,12 +35,15 @@ class Emails_Mailer_Model extends Vtiger_Mailer {
 	 * @param type $htmlContent
 	 * @return type
 	 */
-	public function makeImageURLValid($htmlContent) {
+	public static function makeImageURLValid($htmlContent) {
 		$doc = new DOMDocument();
+		// set error level
+ 		$internalErrors = libxml_use_internal_errors(true);
 		$imageUrls = array();
 		if (!empty($htmlContent)) {
 			@$doc->loadHTML($htmlContent);
 			$tags = $doc->getElementsByTagName('img');
+			libxml_use_internal_errors($internalErrors);
 			foreach ($tags as $tag) {
 				$imageUrl = $tag->getAttribute('src');
 				$imageUrls[$imageUrl] = str_replace(" ", "%20", $imageUrl);
@@ -101,6 +107,9 @@ class Emails_Mailer_Model extends Vtiger_Mailer {
 	}
 
 	public function convertToValidURL($htmlContent) {
+		// early return for blank content.
+		if (!$htmlContent || empty($htmlContent)) return $htmlContent;
+		
 		if (!$this->dom) {
 			$this->dom = new DOMDocument();
 			@$this->dom->loadHTML($htmlContent);
@@ -133,9 +142,7 @@ class Emails_Mailer_Model extends Vtiger_Mailer {
 	}
 
 	public static function getProcessedContent($content) {
-		// remove script tags from whole html content
-		$processedContent = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $content);
-        $processedContent = purifyHtmlEventAttributes($processedContent,TRUE);
+		$processedContent = purifyHtmlEventAttributes($content,TRUE);
 		return $processedContent;
 	}
 

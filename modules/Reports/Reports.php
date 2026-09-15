@@ -112,6 +112,7 @@ class Reports extends CRMEntity{
 	 */
         function __construct($reportid="") {
             global $adb,$current_user,$theme,$mod_strings;
+			$is_admin = false;
             $this->initListOfModules();
             if($reportid != "")
             {
@@ -464,6 +465,8 @@ class Reports extends CRMEntity{
 		global $log;
 		global $mod_strings,$current_user;
 		$returndata = Array();
+		$current_user_parent_role_seq = '';
+		$is_admin = false;
 		
 		require_once('include/utils/UserInfoUtil.php');
 
@@ -549,7 +552,7 @@ class Reports extends CRMEntity{
 		}
 		$result = $adb->pquery($sql, $params);
 		$report = $adb->fetch_array($result);
-		if(count($report)>0)
+		if(php7_count($report)>0)
 		{
 			do
 			{
@@ -582,7 +585,7 @@ class Reports extends CRMEntity{
 			}while($report = $adb->fetch_array($result));
 		}
 		if($rpt_fldr_id !== false && $rpt_fldr_id !== 'shared' && $rpt_fldr_id !== 'All') {
-			$returndata = $returndata[$rpt_fldr_id];
+			$returndata = isset($returndata[$rpt_fldr_id]) ? $returndata[$rpt_fldr_id] : '';
 		}
 		$log->info("Reports :: ListView->Successfully returned vtiger_report details HTML");
 		return $returndata;
@@ -611,9 +614,9 @@ class Reports extends CRMEntity{
 	function getPriModuleColumnsList($module)
 	{
 		//$this->updateModuleList($module);
-		$allColumnsListByBlocks =& $this->getColumnsListbyBlock($module, array_keys($this->module_list[$module]), true);
+		$allColumnsListByBlocks = $this->getColumnsListbyBlock($module, array_keys($this->module_list[$module]), true);
 		foreach($this->module_list[$module] as $key=>$value) {
-			$temp = $allColumnsListByBlocks[$key];
+			$temp = isset($allColumnsListByBlocks[$key]) ? $allColumnsListByBlocks[$key] : array();
 
 			if (!empty($ret_module_list[$module][$value])) {
 				if (!empty($temp)) {
@@ -647,7 +650,7 @@ class Reports extends CRMEntity{
 		if($module != "")
 		{
 			$secmodule = explode(":",$module);
-			for($i=0;$i < count($secmodule) ;$i++)
+			for($i=0;$i < php7_count($secmodule) ;$i++)
 			{
 				//$this->updateModuleList($secmodule[$i]);
 				if($this->module_list[$secmodule[$i]]){
@@ -682,7 +685,7 @@ class Reports extends CRMEntity{
 	 * @return Array
 	 */
 	public function getBlockFieldList($module, $blockIdList, $currentFieldList,$allColumnsListByBlocks) {
-		$temp = $allColumnsListByBlocks[$blockIdList];
+		$temp = isset($allColumnsListByBlocks[$blockIdList]) ? $allColumnsListByBlocks[$blockIdList] : '';
 		if(!empty($currentFieldList)){
 			if(!empty($temp)){
 				$currentFieldList = array_merge($currentFieldList,$temp);
@@ -694,10 +697,11 @@ class Reports extends CRMEntity{
 	}
 
 	public function getModuleFieldList($module) {
-		$allColumnsListByBlocks =& $this->getColumnsListbyBlock($module, array_keys($this->module_list[$module]), true);
+		$ret_module_list = array();
+		$allColumnsListByBlocks =$this->getColumnsListbyBlock($module, array_keys($this->module_list[$module]), true);
 		foreach($this->module_list[$module] as $key=>$value) {
 			$ret_module_list[$module][$value] = $this->getBlockFieldList(
-					$module, $key, $ret_module_list[$module][$value],$allColumnsListByBlocks);
+					$module, $key, isset($ret_module_list[$module][$value]) ? $ret_module_list[$module][$value] : array(),$allColumnsListByBlocks);
 		}
 		return $ret_module_list[$module];
 	}
@@ -741,7 +745,7 @@ class Reports extends CRMEntity{
 
 			$profileList = getCurrentUserProfileList();
 			$sql = "select * from vtiger_field inner join vtiger_profile2field on vtiger_profile2field.fieldid=vtiger_field.fieldid inner join vtiger_def_org_field on vtiger_def_org_field.fieldid=vtiger_field.fieldid where vtiger_field.tabid in (". generateQuestionMarks($tabid) .")  and vtiger_field.block in (". generateQuestionMarks($block) .") and vtiger_field.displaytype in (1,2,3,5) and vtiger_profile2field.visible=0 and vtiger_def_org_field.visible=0 and vtiger_field.presence in (0,2)";
-			if (count($profileList) > 0) {
+			if (php7_count($profileList) > 0) {
 				$sql .= " and vtiger_profile2field.profileid in (". generateQuestionMarks($profileList) .")";
 				array_push($params, $profileList);
 			}
@@ -805,7 +809,7 @@ class Reports extends CRMEntity{
 			$optionvalue = $fieldtablename.":".$fieldcolname.":".$module."_".$fieldlabel1.":".$fieldname.":".$fieldtypeofdata;
 
 			$adv_rel_field_tod_value = '$'.$module.'#'.$fieldname.'$'."::".getTranslatedString($module,$module)." ".getTranslatedString($fieldlabel,$module);
-			if (!is_array($this->adv_rel_fields[$fieldtypeofdata]) ||
+			if (!isset($this->adv_rel_fields[$fieldtypeofdata]) || !is_array($this->adv_rel_fields[$fieldtypeofdata]) ||
 					!in_array($adv_rel_field_tod_value, $this->adv_rel_fields[$fieldtypeofdata])) {
 				$this->adv_rel_fields[$fieldtypeofdata][] = $adv_rel_field_tod_value;
 			}
@@ -900,16 +904,16 @@ class Reports extends CRMEntity{
 		$datefiltervalue = Array("custom","prevfy","thisfy","nextfy","prevfq","thisfq","nextfq",
 				"yesterday","today","tomorrow","lastweek","thisweek","nextweek","lastmonth","thismonth",
 				"nextmonth","last7days","last14days","last30days", "last60days","last90days","last120days",
-				"next30days","next60days","next90days","next120days"
+				"next7days","next14days","next30days","next60days","next90days","next120days"
 				);
 
 		$datefilterdisplay = Array("Custom","Previous FY", "Current FY","Next FY","Previous FQ","Current FQ","Next FQ","Yesterday",
 				"Today","Tomorrow","Last Week","Current Week","Next Week","Last Month","Current Month",
 				"Next Month","Last 7 Days","Last 30 Days","Last 60 Days","Last 90 Days","Last 120 Days",
-				"Next 7 Days","Next 30 Days","Next 60 Days","Next 90 Days","Next 120 Days"
+				"Next 7 Days","Next 14 Days","Next 30 Days","Next 60 Days","Next 90 Days","Next 120 Days"
 				);
 
-		for($i=0;$i<count($datefiltervalue);$i++)
+		for($i=0;$i<php7_count($datefiltervalue);$i++)
 		{
 			if($selecteddatefilter == $datefiltervalue[$i])
 			{
@@ -953,7 +957,7 @@ class Reports extends CRMEntity{
 		{
 			$profileList = getCurrentUserProfileList();
 			$sql = "select * from vtiger_field inner join vtiger_tab on vtiger_tab.tabid = vtiger_field.tabid inner join vtiger_profile2field on vtiger_profile2field.fieldid=vtiger_field.fieldid inner join vtiger_def_org_field on vtiger_def_org_field.fieldid=vtiger_field.fieldid  where vtiger_field.tabid=? and (vtiger_field.uitype =5 or vtiger_field.displaytype=2) and vtiger_profile2field.visible=0 and vtiger_def_org_field.visible=0 and vtiger_field.block in (". generateQuestionMarks($block) .") and vtiger_field.presence in (0,2)";
-			if (count($profileList) > 0) {
+			if (php7_count($profileList) > 0) {
 				$sql .= " and vtiger_profile2field.profileid in (". generateQuestionMarks($profileList) .")";
 				array_push($params, $profileList);
 			}
@@ -1030,6 +1034,9 @@ class Reports extends CRMEntity{
 
 		$next7days = date("Y-m-d",mktime(0, 0, 0, date("m")  , date("d")+6, date("Y")));
 		$next7DaysDateTime = new DateTimeField($next7days.' '. date('H:i:s'));
+
+		$next14days = date("Y-m-d",mktime(0, 0, 0, date("m")  , date("d")+13, date("Y")));
+		$next14DaysDateTime = new DateTimeField($next14days.' '. date('H:i:s'));
 
 		$next30days = date("Y-m-d",mktime(0, 0, 0, date("m")  , date("d")+29, date("Y")));
 		$next30DaysDateTime = new DateTimeField($next30days.' '. date('H:i:s'));
@@ -1196,7 +1203,11 @@ class Reports extends CRMEntity{
 					document.NewReport.startdate.value = "'.$todayDateTime->getDisplayDate().'";
 					document.NewReport.enddate.value = "'.$next7DaysDateTime->getDisplayDate().'";
 
-				} else if( type == "next30days" ) {
+				} else if( type == "next14days" ) {
+					document.NewReport.startdate.value = "'.$todayDateTime->getDisplayDate().'";
+					document.NewReport.enddate.value = "'.$next14DaysDateTime->getDisplayDate().'";
+
+				}else if( type == "next30days" ) {
 					document.NewReport.startdate.value = "'.$todayDateTime->getDisplayDate().'";
 					document.NewReport.enddate.value = "'.$next30DaysDateTime->getDisplayDate().'";
 
@@ -1302,7 +1313,7 @@ function getEscapedColumns($selectedfields)
 		if($module == "Calendar")
 		{
 			$query .= " vtiger_field.tabid in (9,16) and vtiger_field.displaytype in (1,2,3) and vtiger_profile2field.visible=0 and vtiger_def_org_field.visible=0 and vtiger_field.presence in (0,2)";
-			if (count($profileList) > 0) {
+			if (php7_count($profileList) > 0) {
 				$query .= " and vtiger_profile2field.profileid in (". generateQuestionMarks($profileList) .")";
 				array_push($params, $profileList);
 			}
@@ -1312,7 +1323,7 @@ function getEscapedColumns($selectedfields)
 		{
 			array_push($params, $this->primodule, $this->secmodule);
 			$query .= " vtiger_field.tabid in (select tabid from vtiger_tab where vtiger_tab.name in (?,?)) and vtiger_field.displaytype in (1,2,3) and vtiger_profile2field.visible=0 and vtiger_def_org_field.visible=0 and vtiger_field.presence in (0,2)";
-			if (count($profileList) > 0) {
+			if (php7_count($profileList) > 0) {
 				$query .= " and vtiger_profile2field.profileid in (". generateQuestionMarks($profileList) .")";
 				array_push($params, $profileList);
 			}
@@ -1380,7 +1391,7 @@ function getEscapedColumns($selectedfields)
 		$result = $adb->pquery($ssql, array($reportid));
 		$permitted_fields = Array();
 
-		$selected_mod = split(":",$this->secmodule);
+		$selected_mod = explode(':', $this->secmodule);
 		array_push($selected_mod,$this->primodule);
 
 		$inventoryModules = getInventoryModules();
@@ -1397,10 +1408,10 @@ function getEscapedColumns($selectedfields)
 				}
 			}
 			if($selmod_field_disabled==false){
-				list($tablename,$colname,$module_field,$fieldname,$single) = split(":",$fieldcolname);
+				list($tablename, $colname, $module_field, $fieldname, $single) = explode(':', $fieldcolname);
 				require('user_privileges/user_privileges_'.$current_user->id.'.php');
-				list($module,$field) = split("_",$module_field);
-				if(sizeof($permitted_fields) == 0 && $is_admin == false && $profileGlobalPermission[1] == 1 && $profileGlobalPermission[2] == 1)
+				list($module, $field) = explode('_', $module_field);
+				if(php7_sizeof($permitted_fields) == 0 && $is_admin == false && $profileGlobalPermission[1] == 1 && $profileGlobalPermission[2] == 1)
 				{
 					$permitted_fields = $this->getaccesfield($module);
 				}
@@ -1488,7 +1499,7 @@ function getEscapedColumns($selectedfields)
                 
 				if(($col[4] == 'D' || ($col[4] == 'T' && $col[1] != 'time_start' && $col[1] != 'time_end') || ($col[4] == 'DT')) && !in_array($criteria['comparator'], $specialDateConditions)) {
 					$val = Array();
-					for($x=0;$x<count($temp_val);$x++) {
+					for($x=0;$x<php7_count($temp_val);$x++) {
                         if($col[4] == 'D') {
 							$date = new DateTimeField(trim($temp_val[$x]));
 							$val[$x] = $date->getDisplayDate();
@@ -1560,7 +1571,7 @@ function getEscapedColumns($selectedfields)
 		if(!empty($secondarymodule))
 		{
 			//$secondarymodule = explode(":",$secondarymodule);
-			for($i=0;$i < count($secondarymodule) ;$i++)
+			for($i=0;$i < php7_count($secondarymodule) ;$i++)
 			{
 				$options []= $this->sgetColumnstoTotalHTML($secondarymodule[$i],($i+1));
 			}
@@ -1599,7 +1610,7 @@ function getEscapedColumns($selectedfields)
 		if($secondarymodule != "")
 		{
 			$secondarymodule = explode(":",$secondarymodule);
-			for($i=0;$i < count($secondarymodule) ;$i++)
+			for($i=0;$i < php7_count($secondarymodule) ;$i++)
 			{
 				$options []= $this->sgetColumnstoTotalHTML($secondarymodule[$i],($i+1));
 			}
@@ -1635,7 +1646,7 @@ function getEscapedColumns($selectedfields)
 		{
 			$profileList = getCurrentUserProfileList();
 			$ssql = "select * from vtiger_field inner join vtiger_tab on vtiger_tab.tabid = vtiger_field.tabid inner join vtiger_def_org_field on vtiger_def_org_field.fieldid=vtiger_field.fieldid inner join vtiger_profile2field on vtiger_profile2field.fieldid=vtiger_field.fieldid  where vtiger_field.uitype != 50 and vtiger_field.tabid=? and vtiger_field.displaytype in (1,2,3) and vtiger_def_org_field.visible=0 and vtiger_profile2field.visible=0 and vtiger_field.presence in (0,2)";
-			if (count($profileList) > 0) {
+			if (php7_count($profileList) > 0) {
 				$ssql .= " and vtiger_profile2field.profileid in (". generateQuestionMarks($profileList) .")";
 				array_push($sparams, $profileList);
 			}
@@ -1698,7 +1709,7 @@ function getEscapedColumns($selectedfields)
 					$selectedcolumn = "";
 					$selectedcolumn1 = "";
 
-					for($i=0;$i < count($this->columnssummary) ;$i++)
+					for($i=0;$i < php7_count($this->columnssummary) ;$i++)
 					{
 						$selectedcolumnarray = explode(":",$this->columnssummary[$i]);
 						$selectedcolumn = $selectedcolumnarray[1].":".$selectedcolumnarray[2].":".
@@ -1879,7 +1890,7 @@ function updateAdvancedCriteria($reportid, $advft_criteria, $advft_criteria_grou
 		if(($column_info[4] == 'D' || ($column_info[4] == 'T' && $column_info[1] != 'time_start' && $column_info[1] != 'time_end') || ($column_info[4] == 'DT')) && ($column_info[4] != '' && $adv_filter_value != '' ))
 		{
 			$val = Array();
-			for($x=0;$x<count($temp_val);$x++) {
+			for($x=0;$x<php7_count($temp_val);$x++) {
 				if(trim($temp_val[$x]) != '') {
 					$date = new DateTimeField(trim($temp_val[$x]));
 					if($column_info[4] == 'D') {

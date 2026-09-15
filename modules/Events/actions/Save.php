@@ -80,7 +80,7 @@ class Events_Save_Action extends Calendar_Save_Action {
 		$recurObj = getrecurringObjValue();
 		$recurringDataChanged = Calendar_RepeatEvents::checkRecurringDataChanged($recurObj, $recurObjDb);
 		//TODO: remove the dependency on $_REQUEST
-		if(($_REQUEST['recurringtype'] != '' && $_REQUEST['recurringtype'] != '--None--' && $recurringEditMode != 'current') || ($recurringDataChanged && empty($recurObj))) {
+		if((isset($_REQUEST['recurringtype']) &&($_REQUEST['recurringtype'] != '' && $_REQUEST['recurringtype'] != '--None--' && $recurringEditMode != 'current')) || ($recurringDataChanged && empty($recurObj))) {
 			$focus =  CRMEntity::getInstance('Events');
 			//get all the stored data to this object
 			$focus->column_fields = new TrackableObject($recordModel->getData());
@@ -115,7 +115,8 @@ class Events_Save_Action extends Calendar_Save_Action {
 	protected function getRecordModelFromRequest(Vtiger_Request $request) {
 		$recordModel = parent::getRecordModelFromRequest($request);
 		if($request->has('selectedusers')) {
-			$recordModel->set('selectedusers', $request->get('selectedusers'));
+			// recordModel trackable object converts list(vals) to vals[0] send it as string.
+			$recordModel->set('selectedusers', implode(';', $request->get('selectedusers')));
 		}
 		return $recordModel;
 	}

@@ -121,7 +121,7 @@ class Vtiger_Record_Model extends Vtiger_Base_Model {
 	 * @return <Array>
 	 */
 	public function getRawData() {
-		return $this->rawData;
+		return isset($this->rawData) ? $this->rawData : null;
 	}
 
 	/**
@@ -212,7 +212,7 @@ class Vtiger_Record_Model extends Vtiger_Base_Model {
 		if($fieldName == "time_start" && $this->getModule()->getName() == "Emails"){
 			$date = new DateTime();
 			$dateTime = new DateTimeField($date->format('Y-m-d').' '.$this->get($fieldName));
-			$value = Vtiger_Time_UIType::getDisplayValue($dateTime->getDisplayTime());
+			$value = Vtiger_Time_UIType::getDisplayValueUserFormat($dateTime->getDisplayTime());
 			$this->set($fieldName, $value);
 			return $value;
 		}else if($fieldName == "date_start" && $this->getModule()->getName() == "Emails"){
@@ -317,8 +317,13 @@ class Vtiger_Record_Model extends Vtiger_Base_Model {
 		$params = array("%$searchKey%");
 
 		if($module !== false) {
-			$query .= ' AND setype = ?';
-			$params[] = $module;
+			if (is_array($module)) {
+				$query .= ' AND setype IN (' . trim(str_repeat("?,", php7_count($module)), ',') .  ')';
+				$params = array_merge($params, $module);
+			} else {
+				$query .= ' AND setype = ?';
+				$params[] = $module;
+			}
 		}
 		//Remove the ordering for now to improve the speed
 		//$query .= ' ORDER BY createdtime DESC';
@@ -415,7 +420,8 @@ class Vtiger_Record_Model extends Vtiger_Base_Model {
 			$imageName = $db->query_result($result, 0, 'name');
             $url = \Vtiger_Functions::getFilePublicURL($imageId, $imageName);
 			//decode_html - added to handle UTF-8 characters in file names
-			$imageOriginalName = urlencode(decode_html($imageName));
+			$imageOriginalNameDecoded = decode_html($imageName);
+			$imageOriginalName = urlencode($imageOriginalNameDecoded ? $imageOriginalNameDecoded : "");
             if($url) {
                 $url = $site_URL.$url;
             }
@@ -622,7 +628,7 @@ class Vtiger_Record_Model extends Vtiger_Base_Model {
 		$fieldName = $fieldInstance->get('listViewRawFieldName');
 		$fieldValue = $this->get($fieldName); 
 		$rawData = $this->getRawData();
-		$rawValue = $rawData[$fieldName];
+		$rawValue = isset($rawData[$fieldName]) ? $rawData[$fieldName] : '';
 		if ($fieldInstance) {
 			$dataType = $fieldInstance->getFieldDataType();
 			$uiType = $fieldInstance->get('uitype');

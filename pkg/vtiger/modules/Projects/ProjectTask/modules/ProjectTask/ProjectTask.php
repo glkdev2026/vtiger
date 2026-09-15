@@ -41,12 +41,12 @@ class ProjectTask extends CRMEntity {
 	var $list_fields = Array (
 		/* Format: Field Label => Array(tablename, columnname) */
 		// tablename should not have prefix 'vtiger_'
-		'Project Task Name'=> Array('projecttask', 'projecttaskname'),
-		'Start Date'=> Array('projecttask', 'startdate'),
-		'End Date'=> Array('projecttask', 'enddate'),
-		'Type'=>Array('projecttask','projecttasktype'),
-		'Progress'=>Array('projecttask','projecttaskprogress'),
-		'Assigned To' => Array('crmentity','smownerid')
+		'Project Task Name'=> Array('projecttask' => 'projecttaskname'),
+		'Start Date'=> Array('projecttask' => 'startdate'),
+		'End Date'=> Array('projecttask' => 'enddate'),
+		'Type'=>Array('projecttask' => 'projecttasktype'),
+		'Progress'=>Array('projecttask' => 'projecttaskprogress'),
+		'Assigned To' => Array('crmentity' => 'smownerid')
 
 	);
 	var $list_fields_name = Array(
@@ -207,7 +207,7 @@ class ProjectTask extends CRMEntity {
 						(";
 
 					// Build the query based on the group association of current user.
-					if(sizeof($current_user_groups) > 0) {
+					if(php7_sizeof($current_user_groups) > 0) {
 						$sec_query .= " vtiger_groups.groupid IN (". implode(",", $current_user_groups) .") OR ";
 					}
 					$sec_query .= " vtiger_groups.groupid IN
@@ -474,7 +474,7 @@ class ProjectTask extends CRMEntity {
 		require_once "modules/$relModuleName/$relModuleName.php";
 		$relModuleFocus = new $relModuleName();
 		vtlib_setup_modulevars($relModuleName, $relModuleFocus);
-
+		$button = '';
 
 		$returnSet = '&return_module='.$currentModule.'&return_action=CallRelatedList&return_id='.$recordId;
 

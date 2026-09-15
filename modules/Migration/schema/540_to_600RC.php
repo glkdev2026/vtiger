@@ -261,7 +261,7 @@ Migration_Index_View::ExecuteQuery("ALTER TABLE vtiger_pricebookproductrel MODIF
 Migration_Index_View::ExecuteQuery("ALTER TABLE vtiger_inventoryproductrel MODIFY COLUMN listprice decimal(27,5)", array());
 Migration_Index_View::ExecuteQuery("ALTER TABLE vtiger_inventoryproductrel MODIFY COLUMN discount_amount decimal(27,5)", array());
 
-$currencyField = new CurrencyField($value);
+$currencyField = new CurrencyField(null);
 $result = $adb->pquery("SELECT fieldname,tablename,columnname FROM vtiger_field WHERE uitype IN (?,?)",array('71','72'));
 $count = $adb->num_rows($result);
 for($i=0;$i<$count;$i++) {
@@ -312,7 +312,7 @@ $currency_decimals_field->setPicklistValues(array("1","2","3","4","5"));
 $inventoryModules = array('Invoice','SalesOrder','PurchaseOrder','Quotes');
 $actions = array('Import','Export');
 
-for($i = 0; $i < count($inventoryModules); $i++) {
+for($i = 0; $i < php7_count($inventoryModules); $i++) {
 	$moduleName = $inventoryModules[$i];
 	$moduleInstance = Vtiger_Module::getInstance($moduleName);
 
@@ -334,14 +334,14 @@ $itemFieldsLabel = array('Item Name','Quantity','List Price','Item Comment','Ite
 $itemFieldsTypeOfData = array('V~M','V~M','V~M','V~O','V~O','V~O','V~O','V~O','V~O');
 $itemFieldsDisplayType = array('10','7','19','19','7','7','83','83','83');
 
-for($i=0; $i<count($inventoryModules); $i++) {
+for($i=0; $i<php7_count($inventoryModules); $i++) {
 	$moduleName = $inventoryModules[$i];
 	$moduleInstance = Vtiger_Module::getInstance($moduleName);
 	$blockInstance = Vtiger_Block::getInstance('LBL_ITEM_DETAILS',$moduleInstance);
 
 	$relatedmodules = array('Products','Services');
 
-	for($j=0;$j<count($itemFieldsName);$j++) {
+	for($j=0;$j<php7_count($itemFieldsName);$j++) {
 		$field = new Vtiger_Field();
 
 		$field->name = $itemFieldsName[$j];
@@ -496,7 +496,7 @@ Migration_Index_View::ExecuteQuery("ALTER TABLE vtiger_pricebookproductrel MODIF
 Migration_Index_View::ExecuteQuery("ALTER TABLE vtiger_inventoryproductrel MODIFY COLUMN listprice decimal(27,8)", array());
 Migration_Index_View::ExecuteQuery("ALTER TABLE vtiger_inventoryproductrel MODIFY COLUMN discount_amount decimal(27,8)", array());
 
-$currencyField = new CurrencyField($value);
+$currencyField = new CurrencyField(null);
 $result = Migration_Index_View::ExecuteQuery("SELECT tablename,columnname FROM vtiger_field WHERE uitype IN (?,?)",array('71','72'));
 $count = $adb->num_rows($result);
 for($i=0;$i<$count;$i++) {
@@ -1333,7 +1333,9 @@ $skipFields = array(98,115,116,31,32);
 foreach ($moduleFields as $fieldName => $webserviceField) {
 	if($webserviceField->getFieldDataType() == 'string' || $webserviceField->getFieldDataType() == 'email' || $webserviceField->getFieldDataType() == 'phone') {
 		if(!in_array($webserviceField->getUitype(), $skipFields) && $fieldName != 'asterisk_extension'){
-			$userAccessbleFields[$webserviceField->getFieldId()] .= $fieldName;
+			if (isset($userAccessbleFields[$webserviceField->getFieldId()])) {
+				$userAccessbleFields[$webserviceField->getFieldId()] .= $fieldName;
+			}
 		}
 	}
 }
@@ -1549,7 +1551,7 @@ foreach ($inventoryModules as $key => $moduleName) {
 	$field->displaytype = '5';
 	$field->masseditable = '0';
 	$field->quickcreate = '0';
-	$field->columntype = 'INT(11)';
+	$field->columntype = 'DECIMAL(25,3)';
 	$blockInstance->addField($field);
 }
 
@@ -1601,8 +1603,10 @@ foreach($entityModules as $moduleModel) {
 	$crmInstance = CRMEntity::getInstance($moduleModel->getName());
 	$tabId = $moduleModel->getId();
 	$defaultRelatedFields = $crmInstance->list_fields_name;
-	$updateQuery = 'UPDATE vtiger_field SET summaryfield=1  where tabid=? and fieldname IN ('.generateQuestionMarks($defaultRelatedFields).')';
-	Migration_Index_View::ExecuteQuery($updateQuery,  array_merge(array($tabId), array_values($defaultRelatedFields)));
+        if($defaultRelatedFields) {
+            $updateQuery = 'UPDATE vtiger_field SET summaryfield=1  where tabid=? and fieldname IN ('.generateQuestionMarks($defaultRelatedFields).')';
+            Migration_Index_View::ExecuteQuery($updateQuery,  array_merge(array($tabId), array_values($defaultRelatedFields)));
+        }
 }
 
 Migration_Index_View::ExecuteQuery('UPDATE vtiger_currencies SET currency_name = ? where currency_name = ? and currency_code = ?',

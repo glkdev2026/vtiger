@@ -1,0 +1,37 @@
+vendor/*
+!vendor/.htaccess
+.vscode/*
+
+# Sensitive configuration (contains DB credentials, keys)
+config.inc.php
+config.db.php
+config.security.php
+config.csrf-secret.php
+
+# Cache and compiled/generated files
+cache/
+test/cache/
+test/templates_c/
+
+# Logs
+logs/*.log
+logs/*.txt
+
+# User-uploaded storage/attachments (can be huge, not meant for git)
+storage/
+
+# User privilege cache files (regenerated automatically)
+user_privileges/
+
+# Cron-generated temp files
+cron/*.tmp
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+
+# Migration leftovers (patch zips, staged extraction folders)
+vtiger*.zip
+vtigercrm-*-patch.zip
+clean_vtiger_*/

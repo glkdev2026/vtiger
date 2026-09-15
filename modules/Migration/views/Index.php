@@ -18,12 +18,20 @@ class Migration_Index_View extends Vtiger_View_Controller {
 	}
 
 	public function checkPermission(Vtiger_Request $request){
-		return true;
+		parent::checkPermission($request);
+		$currentUserModel = Users_Record_Model::getCurrentUserModel();
+		if(!$currentUserModel->isAdminUser()) {
+			throw new AppException(vtranslate('LBL_PERMISSION_DENIED', 'Vtiger'));
+		}
+        return true;
 	}
 
 	public function process(Vtiger_Request $request) {
 		// Override error reporting to production mode
-		version_compare(PHP_VERSION, '5.5.0') <= 0 ? error_reporting(E_WARNING & ~E_NOTICE & ~E_DEPRECATED) : error_reporting(E_WARNING & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT);
+		// if not set to strict development.
+		if (error_reporting() != E_ALL) {
+			version_compare(PHP_VERSION, '5.5.0') <= 0 ? error_reporting(E_WARNING & ~E_NOTICE & ~E_DEPRECATED) : error_reporting(E_WARNING & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT);
+		}
 		// Migration could be heavy at-times.
 		set_time_limit(0);	
 
@@ -68,7 +76,7 @@ class Migration_Index_View extends Vtiger_View_Controller {
 		$cssFileNames = array(
 			'~/layouts/vlayout/modules/Migration/css/style.css',
 			'~/layouts/vlayout/modules/Migration/css/mkCheckbox.css',
-			'~/libraries/bootstrap/css/bootstrap-responsive.css',
+			'~/libraries/bootstrap-legacy/css/bootstrap.min.css',
 			'~/libraries/bootstrap/css/bootstrap.min.css',
 		);
 		$cssInstances = $this->checkAndConvertCssStyles($cssFileNames);
@@ -108,9 +116,9 @@ class Migration_Index_View extends Vtiger_View_Controller {
 		}
 		$migrateVersions[] = $getLatestSourceVersion;
 
-		$patchCount  = count($migrateVersions);
+		$patchCount  = php7_count($migrateVersions);
 
-		define('VTIGER_UPGRADE', true);
+		define('VTIGER_UPGRADE', $getDBVersion);
 
 		for($i=0; $i<$patchCount; $i++){
 			$filename =  "modules/Migration/schema/".$migrateVersions[$i]."_to_".$migrateVersions[$i+1].".php";
@@ -175,7 +183,7 @@ class Migration_Index_View extends Vtiger_View_Controller {
 
 	public static function insertSelectColumns($queryid, $columnname) {
 		if ($queryid != "") {
-			for ($i = 0; $i < count($columnname); $i++) {
+			for ($i = 0; $i < php7_count($columnname); $i++) {
 				$icolumnsql = "insert into vtiger_selectcolumn (QUERYID,COLUMNINDEX,COLUMNNAME) values (?,?,?)";
 				self::ExecuteQuery($icolumnsql, array($queryid, $i, $columnname[$i]));
 			}
@@ -224,17 +232,17 @@ class Migration_Index_View extends Vtiger_View_Controller {
 
 				$fieldName = $condition['fieldname'];
 				$fieldNameContents = explode(' ', $fieldName);
-				if (count($fieldNameContents) > 1) {
+				if (php7_count($fieldNameContents) > 1) {
 					$fieldName = '('. $fieldName .')';
 				}
 
-				$groupId = $condition['groupid'];
+				$groupId = isset($condition['groupid']) ? $condition['groupid'] : null;
 				if (!$groupId) {
 					$groupId = 0;
 				}
 
 				$groupCondition = 'or';
-				if ($groupId === $previousConditionGroupId || count($conditions) === 1) {
+				if ($groupId === $previousConditionGroupId || php7_count($conditions) === 1) {
 					$groupCondition = 'and';
 				}
 

@@ -46,13 +46,19 @@ class Vtiger_ShowWidget_View extends Vtiger_IndexAjax_View {
 					if ($request->has('data')) {
 						$widget->set('data', $request->get('data'));
 					}
-					$widget->add();
+		    		$widget->add();
+
+					if ($request->get('widgetid')) {
+						$widget->set('id', $request->get('widgetid'));
+					}
+					$request->set('widgetid', $widget->get('id'));
 				}
 				
 				//Date conversion from user format to database format
 				$createdTime = $request->get('createdtime');
 				//user format dates should be used in getSearchParams() api
 				$request->set('dateFilter', $createdTime);
+				$dates = array();
 				if(!empty($createdTime)) {
 					$startDate = Vtiger_Date_UIType::getDBInsertedValue($createdTime['start']);
 					$dates['start'] = getValidDBInsertDateTimeValue($startDate . ' 00:00:00');
@@ -67,7 +73,7 @@ class Vtiger_ShowWidget_View extends Vtiger_IndexAjax_View {
 				$currentUserPrivilegeModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
 				if($currentUserPrivilegeModel->hasModulePermission(getTabid($moduleName)) && !Vtiger_Runtime::isRestricted('modules', $moduleName)){
 					$classInstance = new $className();
-					$classInstance->process($request, $widget);
+					$classInstance->process($request);
 				}else{
 					throw new AppException(vtranslate('LBL_PERMISSION_DENIED'));
 				}

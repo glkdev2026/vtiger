@@ -9,7 +9,7 @@
  *************************************************************************************/
 	
 	function setBuiltIn($json){
-		$json->useBuiltinEncoderDecoder = true;
+		Zend_Json::$useBuiltinEncoderDecoder = true;
 	}
 	
 	class OperationManager{
@@ -132,10 +132,10 @@
 		}
 		
 		function handleType($type,$value){
-			$result;
-			$value = stripslashes($value);
+			$result = null;
+			$value = $value ? stripslashes($value) : "";
 			$type = strtolower($type);
-			if($this->inParamProcess[$type]){
+			if(isset($this->inParamProcess[$type]) && $this->inParamProcess[$type]){
 				$result = call_user_func($this->inParamProcess[$type],$value);
 			}else{
 				$result = $value;
@@ -148,9 +148,18 @@
 			try{
 				$operation = strtolower($this->operationName);
 				if(!$this->preLogin){
-					$params[] = $user;
+					$params["user"] = $user;
 					return call_user_func_array($this->handlerMethod,$params);
 				}else{
+
+					/* PHP 8.x fix to match target handler arguments (named parameter) */
+					if ($this->handlerMethod == "vtws_login") {
+						if (isset($params["accessKey"])) {
+							$params["pwd"] = $params["accessKey"];
+							unset($params["accessKey"]);
+						}
+					}
+
 					$userDetails = call_user_func_array($this->handlerMethod,$params);
 					if(is_array($userDetails)){
 						return $userDetails;

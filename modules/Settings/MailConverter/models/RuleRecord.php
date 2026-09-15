@@ -10,6 +10,8 @@
 
 vimport('~~modules/Settings/MailConverter/handlers/MailScannerAction.php');
 vimport('~~modules/Settings/MailConverter/handlers/MailScannerRule.php');
+require_once "include/events/SqlResultIterator.inc";
+
 
 class Settings_MailConverter_RuleRecord_Model extends Settings_Vtiger_Record_Model {
 
@@ -17,6 +19,7 @@ class Settings_MailConverter_RuleRecord_Model extends Settings_Vtiger_Record_Mod
 	var $cc = false;
 	var $bcc = false;
 
+	public $actions = [];
 	/**
 	 * Function to get Id of this record instance
 	 * @return <Integer> Id
@@ -151,12 +154,13 @@ class Settings_MailConverter_RuleRecord_Model extends Settings_Vtiger_Record_Mod
 		if ($actionString != $newActionString) {
 			$actionId = '';
 			$actions = $this->getActions();
+			$actionModel = '';
 			if ($actions) {
-				$actionModel = reset($this->getActions());
+				$actionModel = reset($actions);
 				$actionId = $actionModel->actionid;
 			}
 			//Svaing the Action info
-			$ruleModel->updateAction($actionModel->actionid, str_replace('_', ',', $newActionString));
+			$ruleModel->updateAction($actionId, str_replace('_', ',', $newActionString));
 		}
 		return $ruleModel->ruleid;
 	}
@@ -184,8 +188,9 @@ class Settings_MailConverter_RuleRecord_Model extends Settings_Vtiger_Record_Mod
 		if ($db->num_rows($result)) {
 			$recordModel = new self();
 			$recordModel->setData($db->query_result_rowdata($result));
-			$action = reset($recordModel->getActions());
-			return $recordModel->set('action', str_replace(',', '_', $action->actiontext));
+			$actions=$recordModel->getActions();
+			$action = reset($actions);
+			return $recordModel->set('action', isset($action->actiontext) ? str_replace(',', '_', $action->actiontext) : '');
 		}
 		return false;
 	}
@@ -205,8 +210,9 @@ class Settings_MailConverter_RuleRecord_Model extends Settings_Vtiger_Record_Mod
 			$rowData = $db->query_result_rowdata($result,$i);
 			$ruleModel = new self();
 			$ruleModel->setData($rowData);
-			$action = reset($ruleModel->getActions());
-			$ruleModel->set('action', str_replace(',', '_', $action->actiontext));
+			$actions = $ruleModel->getActions();
+			$action = reset($actions);
+			$ruleModel->set('action', isset($action->actiontext) ? str_replace(',', '_', $action->actiontext) : '');
 			$assignedTo = Settings_MailConverter_RuleRecord_Model::getAssignedTo($rowData['scannerid'], $rowData['ruleid']);
 			$ruleModel->set('assigned_to', $assignedTo[1]);
 			$ruleModelsList[$rowData['ruleid']] = $ruleModel;
@@ -229,8 +235,9 @@ class Settings_MailConverter_RuleRecord_Model extends Settings_Vtiger_Record_Mod
 			$ruleModel->setData($rowData);
 			$assignedTo = Settings_MailConverter_RuleRecord_Model::getAssignedTo($scannerId, $ruleId);
 			$ruleModel->set('assigned_to', $assignedTo[1]);
-			$action = reset($ruleModel->getActions());
-			 return $ruleModel->set('action', str_replace(',', '_', $action->actiontext));
+			$actions=$ruleModel->getActions();
+			$action = reset($actions);
+			 return $ruleModel->set('action', isset($action->actiontext) ? str_replace(',', '_', $action->actiontext) : '');
 		}
 		return false;
 	}
@@ -250,8 +257,27 @@ class Settings_MailConverter_RuleRecord_Model extends Settings_Vtiger_Record_Mod
 	public static function getDefaultActions() {
 		return array('CREATE_HelpDesk_FROM', 'UPDATE_HelpDesk_SUBJECT', 'LINK_Contacts_FROM', 'LINK_Contacts_TO', 'LINK_Leads_FROM', 'LINK_Leads_TO', 'LINK_Accounts_FROM', 'LINK_Accounts_TO');
 	}
+	public static function getCustomActions()
+    {
+        $db = PearDatabase::getInstance();
 
-	public function getAssignedTo($scannerId, $ruleId) {
+        $result = $db->pquery("SELECT module_name,method_name FROM vtiger_mailscanner_entitymethod WHERE 1=1", array());
+        $it = new SqlResultIterator($db, $result);
+        $methodNames = array();
+        foreach ($it as $row) {
+            unset($method_name);
+            $method_name = $row->method_name;
+            $module_name = $row->module_name;
+
+            $methodNames[] = $method_name . "_" . $module_name . "_" . "FROM";
+            $methodNames[] = $method_name . "_" . $module_name . "_" . "TO";
+            $methodNames[] = $method_name . "_" . $module_name . "_" . "SUBJECT";
+
+        }
+
+        return $methodNames;
+    }
+	public static function getAssignedTo($scannerId, $ruleId) {
 		$db = PearDatabase::getInstance();
 		$result = $db->pquery("SELECT assigned_to FROM vtiger_mailscanner_rules WHERE scannerid = ? AND ruleid = ?", array($scannerId, $ruleId));
 		$id = $db->query_result($result, 0, 'assigned_to');

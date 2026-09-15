@@ -472,8 +472,12 @@ class Vtiger_Module_Model extends Vtiger_Module {
 		foreach($blocksList as $blockName => $blockModel) {
 			$fieldList = $blockModel->getFields();
 			foreach($fieldList as $fieldName => $fieldModel) {
-				if($fieldModel->isQuickCreateEnabled() && $fieldModel->isEditable()) {
+				// The "time_start" field has been included in the quick create field list because we utilize its data value for quick editing purpose
+				if ($fieldName == 'time_start' && $blockModel->get('id') == 19){
 					$quickCreateFieldList[$fieldName] = $fieldModel;
+				}
+				else if($fieldModel->isQuickCreateEnabled() && $fieldModel->isEditable()){
+					$quickCreateFieldList[$fieldName] = $fieldModel;	
 				}
 			}
 		}
@@ -514,6 +518,7 @@ class Vtiger_Module_Model extends Vtiger_Module {
 
 		$nameFieldObject = Vtiger_Cache::get('EntityField',$this->getName());
 		$moduleName = $this->getName();
+		$fieldNames = '';
 		if($nameFieldObject && $nameFieldObject->fieldname) {
 			$this->nameFields = explode(',', $nameFieldObject->fieldname);
 		} else {
@@ -522,6 +527,7 @@ class Vtiger_Module_Model extends Vtiger_Module {
 			$query = "SELECT fieldname, tablename, entityidfield FROM vtiger_entityname WHERE tabid = ?";
 			$result = $adb->pquery($query, array($this->getId()));
 			$this->nameFields = array();
+			$fieldNames = '';
 			if($result){
 				$rowCount = $adb->num_rows($result);
 				if($rowCount > 0){
@@ -612,16 +618,16 @@ class Vtiger_Module_Model extends Vtiger_Module {
 	public function getConfigureRelatedListFields(){
 		$showRelatedFieldModel = $this->getHeaderAndSummaryViewFieldsList();
 		$relatedListFields = array();
-		if(count($showRelatedFieldModel) > 0) {
+		if(php7_count($showRelatedFieldModel) > 0) {
 			foreach ($showRelatedFieldModel as $key => $field) {
 				$relatedListFields[$field->get('column')] = $field->get('name');
 			}
 		}
 
-		if(count($relatedListFields)>0) {
+		if(php7_count($relatedListFields)>0) {
 			$nameFields = $this->getNameFields();
 			foreach($nameFields as $fieldName){
-				if(!$relatedListFields[$fieldName]) {
+				if(!isset($relatedListFields[$fieldName]) || !$relatedListFields[$fieldName]) {
 					$fieldModel = $this->getField($fieldName);
 					$relatedListFields[$fieldModel->get('column')] = $fieldModel->get('name');
 				}
@@ -1225,6 +1231,7 @@ class Vtiger_Module_Model extends Vtiger_Module {
 	public function getOwnerWhereConditionForDashBoards ($owner) {
 		$currentUserModel = Users_Record_Model::getCurrentUserModel();
 		$sharingAccessModel = Settings_SharingAccess_Module_Model::getInstance($this->getName());
+		$ownerSql = '';
 		$params = array();
 		if(!empty($owner) && $currentUserModel->isAdminUser()) {//If admin user, then allow users data
 			$ownerSql =  ' smownerid = '. $owner;
@@ -1389,7 +1396,7 @@ class Vtiger_Module_Model extends Vtiger_Module {
 	 * @return <Array> list of field models <Vtiger_Field_Model>
 	 */
 	public function getSummaryViewFieldsList() {
-		if (!$this->summaryFields) {
+		if (!isset($this->summaryFields) || !$this->summaryFields) {
 			$summaryFields = array();
 			$fields = $this->getFields();
 			foreach ($fields as $fieldName => $fieldModel) {
@@ -1407,7 +1414,7 @@ class Vtiger_Module_Model extends Vtiger_Module {
 	 * @return <Array> list of field models <Vtiger_Field_Model>
 	 */
 	public function getHeaderViewFieldsList() {
-		if (!$this->headerFields) {
+		if (!isset($this->headerFields) || !$this->headerFields) {
 			$headerFields = array();
 			$fields = $this->getFields();
 			foreach ($fields as $fieldName => $fieldModel) {
@@ -1425,7 +1432,7 @@ class Vtiger_Module_Model extends Vtiger_Module {
 	 * @return <Array> list of field models <Vtiger_Field_Model>
 	 */
 	public function getHeaderAndSummaryViewFieldsList() {
-		if(!$this->relationListViewFields) {
+		if(!isset($this->relationListViewFields) || !$this->relationListViewFields) {
 			$summaryViewFields = $this->getSummaryViewFieldsList();
 			$headerViewFields = $this->getHeaderViewFieldsList();
 			$allRelationListViewFields = array_merge($headerViewFields,$summaryViewFields);
@@ -1523,7 +1530,7 @@ class Vtiger_Module_Model extends Vtiger_Module {
 			$relatedListFields['filestatus'] = 'filestatus';
 		}
 
-		if(count($relatedListFields) > 0) {
+		if(php7_count($relatedListFields) > 0) {
 			$currentUser = Users_Record_Model::getCurrentUserModel();
 			$queryGenerator = new QueryGenerator($relatedModuleName, $currentUser);
 			$queryGenerator->setFields($relatedListFields);
@@ -1618,6 +1625,7 @@ class Vtiger_Module_Model extends Vtiger_Module {
         if(empty($relationIds))  return array();
         
 		$focus = CRMEntity::getInstance($this->getName());
+		$focus->related_module_table_index=isset($focus->related_module_table_index) ? $focus->related_module_table_index : null;
 		$relatedModuleMapping = $focus->related_module_table_index;
         
         $relationFieldMapping = array();
@@ -1651,9 +1659,9 @@ class Vtiger_Module_Model extends Vtiger_Module {
                 
                 
                 if(empty($relationFieldId)){
-                    $tablename = $relatedModuleMapping[$module]['table_name'];
-                    $tabIndex = $relatedModuleMapping[$module]['table_index'];
-                    $relIndex = $relatedModuleMapping[$module]['rel_index'];
+                    $tablename = isset($relatedModuleMapping[$module]['table_name']) ? $relatedModuleMapping[$module]['table_name'] : '';
+                    $tabIndex = isset($relatedModuleMapping[$module]['table_index']) ? $relatedModuleMapping[$module]['table_index'] : '';
+                    $relIndex = isset($relatedModuleMapping[$module]['rel_index']) ? $relatedModuleMapping[$module]['rel_index'] : '';
 					//To show related records comments in documents, should get related document records from vtiger_senotesrel.
 					if(empty($tablename) && $this->getName() == 'Documents') {
 						$tablename = 'vtiger_senotesrel';
@@ -1783,7 +1791,7 @@ class Vtiger_Module_Model extends Vtiger_Module {
 	public function getPopupViewFieldsList(){
 		$summaryFieldsList = $this->getHeaderAndSummaryViewFieldsList();
 
-		if(count($summaryFieldsList) > 0){
+		if(php7_count($summaryFieldsList) > 0){
 			 $popupFields = array_keys($summaryFieldsList);
 		}else{
 			$popupFields = array_values($this->getRelatedListFields());

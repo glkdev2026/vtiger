@@ -97,7 +97,7 @@ class Vtiger_ListAjax_View extends Vtiger_List_View {
 
 		$selectedFields = array();
 		foreach ($cvSelectedFields as $cvFieldName) {
-			$selectedFields[$cvFieldName] = $cvSelectedFieldModelsMapping[$cvFieldName];
+			$selectedFields[$cvFieldName] = isset($cvSelectedFieldModelsMapping[$cvFieldName]) ? $cvSelectedFieldModelsMapping[$cvFieldName] : '';
 		}
 
 		$viewer->assign('CV_MODEL',$cvModel);
@@ -121,17 +121,11 @@ class Vtiger_ListAjax_View extends Vtiger_List_View {
 		$pagingModel->set('limit', $pageLimit-1);
 
 		$searchableModules = Vtiger_Module_Model::getSearchableModules();
-		$matchingRecords = array();
-		foreach ($searchableModules as $searchModule => $searchModuleModel) {
-			$searchedRecords = Vtiger_Record_Model::getSearchResult($searchValue, $searchModule);
-			if ($searchedRecords[$searchModule]) {
-				$matchingRecords[$searchModule] = $searchedRecords[$searchModule];
-			}
-		}
+		$matchingRecords = Vtiger_Record_Model::getSearchResult($searchValue, array_keys($searchableModules));
 
 		$matchingRecordsList = array();
 		foreach ($matchingRecords as $module => $recordModelsList) {
-			$recordsCount = count($recordModelsList);
+			$recordsCount = php7_count($recordModelsList);
 			$recordModelsList = array_keys($recordModelsList);
 			$recordModelsList = array_slice($recordModelsList, 0, $pageLimit);
 
@@ -147,7 +141,7 @@ class Vtiger_ListAjax_View extends Vtiger_List_View {
 			$listViewModel->pagingModel = $listviewPagingModel;
 			$listViewModel->recordsCount = $recordsCount;
 
-			if (count($recordModelsList) == $pageLimit) {
+			if (php7_count($recordModelsList) == $pageLimit) {
 				array_pop($recordModelsList);
 			}
 
@@ -157,7 +151,7 @@ class Vtiger_ListAjax_View extends Vtiger_List_View {
 				$recordModel->setRawData($recordModel->getData());
 
 				foreach ($listViewModel->listViewHeaders as $fieldName => $fieldModel) {
-					$recordModel->set($fieldName, $fieldModel->getDisplayValue($recordModel->get($fieldName)));
+					$recordModel->set($fieldName, $fieldModel->getDisplayValue($recordModel->get($fieldName),$recordId));
 				}
 				$listViewModel->listViewEntries[$recordId] = $recordModel;
 			}

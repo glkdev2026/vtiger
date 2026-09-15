@@ -126,7 +126,7 @@ class SalesOrder extends CRMEntity {
 			unset($_REQUEST['totalProductCount']);
 		}
 
-
+		$_REQUEST['ajxaction'] = isset($_REQUEST['ajxaction']) ? $_REQUEST['ajxaction'] : '';
 		//in ajax save we should not call this function, because this will delete all the existing product values
 		if($_REQUEST['action'] != 'SalesOrderAjax' && $_REQUEST['ajxaction'] != 'DETAILVIEW'
 				&& $_REQUEST['action'] != 'MassEditSave' && $_REQUEST['action'] != 'ProcessDuplicates'
@@ -540,13 +540,14 @@ class SalesOrder extends CRMEntity {
 	 * @return string
 	 */
 	// Note : remove getDuplicatesQuery API once vtiger5 code is removed
-    function getQueryForDuplicates($module, $tableColumns, $selectedColumns = '', $ignoreEmpty = false,$requiredTables = array()) {
+    function getQueryForDuplicates($module, $tableColumns, $selectedColumns = '', $ignoreEmpty = false,$requiredTables = array(), $columnTypes = null) {
 		if(is_array($tableColumns)) {
 			$tableColumnsString = implode(',', $tableColumns);
 		}
         $selectClause = "SELECT " . $this->table_name . "." . $this->table_index . " AS recordid," . $tableColumnsString;
-
-        // Select Custom Field Table Columns if present
+		$query = '';
+		$duplicateCheckClause = '';
+         // Select Custom Field Table Columns if present
         if (isset($this->customFieldTable))
             $query .= ", " . $this->customFieldTable[0] . ".* ";
 
@@ -575,7 +576,11 @@ class SalesOrder extends CRMEntity {
 
 		if($ignoreEmpty) {
 			foreach($tableColumns as $tableColumn){
-				$whereClause .= " AND ($tableColumn IS NOT NULL AND $tableColumn != '') ";
+				if ($columnTypes && ($columnTypes[$tableColumn] == "date" || $columnTypes[$tableColumn] == "datetime")) {
+					$whereClause .= " AND ($tableColumn IS NOT NULL) ";	
+				} else {
+					$whereClause .= " AND ($tableColumn IS NOT NULL AND $tableColumn != '') ";
+				}
 			}
 		}
 
@@ -595,7 +600,7 @@ class SalesOrder extends CRMEntity {
 		foreach($tableColumns as $tableColumn){
 			$tableInfo = explode('.', $tableColumn);
 			$duplicateCheckClause .= " ifnull($tableColumn,'null') = ifnull(temp.$tableInfo[1],'null')";
-			if (count($tableColumns) != $i++) $duplicateCheckClause .= " AND ";
+			if (php7_count($tableColumns) != $i++) $duplicateCheckClause .= " AND ";
 		}
 
         $query = $selectClause . $fromClause .

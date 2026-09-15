@@ -16,8 +16,8 @@ class ModComments_InRelation_View extends Vtiger_RelatedList_View {
 		$commentRecordId = $request->get('commentid');
 		$moduleName = $request->getModule();
 		$rollupSettings = $request->get('rollup_settings');
-		$rollupStatus = $rollupSettings['rollup_status'];
-		$rollupid = $rollupSettings['rollupid'];
+		$rollupStatus = isset($rollupSettings['rollup_status'])? $rollupSettings['rollup_status'] : false;
+		$rollupid = isset($rollupSettings['rollupid']) ? $rollupSettings['rollupid'] : false;
 		$currentUserModel = Users_Record_Model::getCurrentUserModel();
 		$modCommentsModel = Vtiger_Module_Model::getInstance('ModComments');
 
@@ -27,8 +27,11 @@ class ModComments_InRelation_View extends Vtiger_RelatedList_View {
 			$startindex = $startindex + 10;
 		} else {
 			$parentCommentModels = ModComments_Record_Model::getAllParentComments($parentRecordId);
+
+		
 		}
 
+		$currentCommentModel = null;
 		if (!empty($commentRecordId)) {
 			$currentCommentModel = ModComments_Record_Model::getInstanceById($commentRecordId);
 		}
@@ -44,7 +47,6 @@ class ModComments_InRelation_View extends Vtiger_RelatedList_View {
 		$viewer->assign('FIELD_MODEL', $fileFieldModel);
 		$viewer->assign('MAX_UPLOAD_LIMIT_MB', Vtiger_Util_Helper::getMaxUploadSize());
 		$viewer->assign('MAX_UPLOAD_LIMIT_BYTES', Vtiger_Util_Helper::getMaxUploadSizeInBytes());
-
 		$viewer->assign('MODULE_NAME', $request->getModule());
 		$viewer->assign('MODULE_RECORD', $parentRecordId);
 		$viewer->assign('ROLLUP_STATUS', $rollupStatus);

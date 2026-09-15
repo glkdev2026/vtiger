@@ -18,22 +18,20 @@ class Reports_Save_Action extends Vtiger_Save_Action {
 	
 	public function checkPermission(Vtiger_Request $request) {
 		parent::checkPermission($request);
-
-		$record = $request->get('record');
-		if ($record) {
-			$reportModel = Reports_Record_Model::getCleanInstance($record);
-			if (!$reportModel->isEditable()) {
-				throw new AppException(vtranslate('LBL_PERMISSION_DENIED'));
-			}
-		}
-		return true;
+                
+                $modulename = $request->getModule();
+                $modulemodel = Reports_Module_Model::getInstance($modulename);
+                $currentUserPrivileges = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+                if(!$currentUserPrivileges->hasModulePermission($modulemodel->getId())) {
+                    throw new AppException(vtranslate('LBL_PERMISSION_DENIED'));
+                }
 	}
 
 	public function process(Vtiger_Request $request) {
 		$moduleName = $request->getModule();
 
 		$record = $request->get('record');
-		$reportModel = new Reports_Record_Model();
+		$reportModel = Reports_Record_Model::getCleanInstance();
 		$reportModel->setModule('Reports');
 		if(!empty($record) && !$request->get('isDuplicate')) {
 			$reportModel->setId($record);

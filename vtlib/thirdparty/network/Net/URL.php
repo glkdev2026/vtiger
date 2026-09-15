@@ -37,6 +37,7 @@
 // Net_URL Class
 
 
+#[\AllowDynamicProperties]
 class Net_URL
 {
     var $options = array('encode_query_keys' => false);
@@ -190,7 +191,7 @@ class Net_URL
                         break;
 
                     case 'path':
-                        if ($value{0} == '/') {
+                        if ($value[0] == '/') {
                             $this->path = $value;
                         } else {
                             $path = dirname($this->path) == DIRECTORY_SEPARATOR ? '' : dirname($this->path);
@@ -378,7 +379,7 @@ class Net_URL
     * @param  string $path URL path to resolve
     * @return string      The result
     */
-    function resolvePath($path)
+    static function resolvePath($path)
     {
         $path = explode('/', str_replace('//', '/', $path));
 

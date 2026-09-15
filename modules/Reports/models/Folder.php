@@ -95,7 +95,7 @@ class Reports_Folder_Model extends Vtiger_Base_Model {
 		$paramsList['searchParams'] = $this->get('search_params');
 
 		$reportsList = $reportClassInstance->sgetRptsforFldr($fldrId, $paramsList);
-		$reportsCount = count($reportsList);
+		$reportsCount = php7_count($reportsList);
 
 		$pageLimit = $pagingModel->getPageLimit();
 		if($reportsCount > $pageLimit){
@@ -111,12 +111,13 @@ class Reports_Folder_Model extends Vtiger_Base_Model {
 			return $this->getAllReportModels($reportsList, $reportModuleModel);
 		} else {
 			$reportModels = array();
-			for($i=0; $i < count($reportsList); $i++) {
-				$reportModel = new Reports_Record_Model();
-
-				$reportModel->setData($reportsList[$i])->setModuleFromInstance($reportModuleModel);
-				$reportModels[] = $reportModel;
-				unset($reportModel);
+			for($i=0; $i < php7_count($reportsList); $i++) {
+				$reportModel = Reports_Record_Model::getCleanInstance();
+				if (isset($reportsList[$i]) && is_array($reportsList)) { 
+					$reportModel->setData($reportsList[$i])->setModuleFromInstance($reportModuleModel);
+					$reportModels[] = $reportModel;
+					unset($reportModel);
+				}
 			}
 			return $reportModels;
 		}
@@ -352,7 +353,7 @@ class Reports_Folder_Model extends Vtiger_Base_Model {
 		$allReportModels = array();
 		$folders = self::getAll();
 		foreach ($allReportsList as $key => $reportsList) {
-			$reportModel = new Reports_Record_Model();
+			$reportModel = Reports_Record_Model::getCleanInstance();
 			$reportModel->setData($reportsList)->setModuleFromInstance($reportModuleModel);
 			$reportModel->set('foldername', $folders[$reportsList['folderid']]->getName());
 			$allReportModels[] = $reportModel;
@@ -366,14 +367,14 @@ class Reports_Folder_Model extends Vtiger_Base_Model {
 	 * @param <Boolean> $skipRecords - List of the RecordIds to be skipped
 	 * @return <Array> List of RecordsIds
 	 */
-	public function getRecordIds($skipRecords=false, $module, $searchParams = array()) {
+	public function getRecordIds($skipRecords=false, $module=null, $searchParams = array()) {
 		$db = PearDatabase::getInstance();
 		$baseTableName = "vtiger_report";
 		$baseTableId = "reportid";
 		$folderId = $this->getId();
 		$listQuery = $this->getListViewQuery($folderId, $searchParams);
 
-		if($skipRecords && !empty($skipRecords) && is_array($skipRecords) && count($skipRecords) > 0) {
+		if($skipRecords && !empty($skipRecords) && is_array($skipRecords) && php7_count($skipRecords) > 0) {
 			$listQuery .= ' AND '.$baseTableName.'.'.$baseTableId.' NOT IN ('. generateQuestionMarks($skipRecords) .')';
 		}
 		$result = $db->pquery($listQuery, $skipRecords);

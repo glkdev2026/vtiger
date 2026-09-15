@@ -10,6 +10,8 @@
 
 class Portal_List_View extends Vtiger_Index_View {
 
+	protected $listviewinitcalled  = false;
+
 	public function requiresPermission(Vtiger_Request $request){
 		$permissions = parent::requiresPermission($request);
 		$permissions[] = array('module_parameter' => 'module', 'action' => 'DetailView');
@@ -37,6 +39,11 @@ class Portal_List_View extends Vtiger_Index_View {
 	}
 
 	public function initializeListViewContents(Vtiger_Request $request, Vtiger_Viewer $viewer) {
+
+	if($this->listviewinitcalled){
+		return;
+	}
+
 		$moduleName = $request->getModule();
 		$pageNumber = $request->get('page');
 		$orderBy = $request->get('orderby');
@@ -91,7 +98,7 @@ class Portal_List_View extends Vtiger_Index_View {
 		}
 
 		// preProcess is already loading this, we can reuse
-		if(!$this->pagingModel){
+		if(!property_exists($this, 'pagingModel') || !$this->pagingModel){
 			$pagingModel = new Vtiger_Paging_Model();
 			$pagingModel->set('page', $pageNumber);
 			$pagingModel->set('viewid', $request->get('viewname'));
@@ -102,8 +109,8 @@ class Portal_List_View extends Vtiger_Index_View {
 		$listviewEntries = $listViewModel->getListViewEntries($pagingModel);
 
 		//if list view entries restricted to show, paging should not fail
-		if(!$this->noOfEntries) {
-			$noOfEntries = count($listviewEntries);
+		if(!property_exists($this, 'noOfEntries') || !$this->noOfEntries) {
+			$noOfEntries = php7_count($listviewEntries);
 		}
 
 		$viewer->assign('PAGE_NUMBER',$pageNumber);
@@ -117,7 +124,7 @@ class Portal_List_View extends Vtiger_Index_View {
 		$viewer->assign('SORT_ORDER', $sortOrder);
 		$viewer->assign('SORT_IMAGE', $sortImage);
 		$viewer->assign('NEXT_SORT_ORDER', $nextSortOrder);
-		$viewer->assign('RECORD_COUNT', count($listviewEntries));
+		$viewer->assign('RECORD_COUNT', php7_count($listviewEntries));
 		$viewer->assign('CURRENT_PAGE', $pageNumber);
 		$viewer->assign('PAGING_INFO', $listViewModel->calculatePageRange($listviewEntries, $pagingModel));
 		$viewer->assign('FASORT_IMAGE',$faSortImage);
@@ -125,8 +132,9 @@ class Portal_List_View extends Vtiger_Index_View {
 		$viewer->assign('PAGING_MODEL', $pagingModel);
 		$viewer->assign('PAGE_NUMBER', $pagingModel->get('page'));
 		$viewer->assign('NO_OF_ENTRIES', count($listviewEntries));
-	}
 
+		$this->listviewinitcalled = true;
+	}
 	function getHeaderScripts(Vtiger_Request $request) {
 		$headerScriptInstances = parent::getHeaderScripts($request);
 		$moduleName = $request->getModule();

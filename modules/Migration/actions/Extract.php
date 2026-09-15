@@ -10,6 +10,9 @@
 
 class Migration_Extract_Action extends Vtiger_Action_Controller {
 
+	public function loginRequired() {
+		return false;
+	}
 	public function process(Vtiger_Request $request) {
 		global $root_directory, $log;
 		@session_start();
@@ -18,30 +21,37 @@ class Migration_Extract_Action extends Vtiger_Action_Controller {
 
 		$user = CRMEntity::getInstance('Users');
 		$user->column_fields['user_name'] = $userName;
-		if ($user->doLogin($password)) {
-			$zip = new ZipArchive();
-			$fileName = 'vtiger7.zip';
-			if ($zip->open($fileName)) {
-				for ($i = 0; $i < $zip->numFiles; $i++) {
-					$log->fatal('Filename: '.$zip->getNameIndex($i).'<br />');
-				}
-				if ($zip->extractTo($root_directory)) {
-					$zip->close();
+		$userid = $user->retrieve_user_id($userName);
+		$userRecordModel = Users_Privileges_Model::getInstanceById($userid, 'Users');
+		if($userRecordModel->isAdminUser()) {
+			if ($user->doLogin($password)) {
+				$zip = new ZipArchive();
+				$fileName = 'vtiger8.zip';
+				if ($zip->open($fileName)) {
+					if ($zip->extractTo($root_directory)) {
+						$zip->close();
+						$_SESSION['authenticated_user_id'] = $userid;
+						$_SESSION['app_unique_key'] = vglobal('application_unique_key');
 
-					$userid = $user->retrieve_user_id($userName);
-					$_SESSION['authenticated_user_id'] = $userid;
+						/* Give time for PHP runtime to pickup new changes after zip 
+						 * for files that are include/require once previously */
+						sleep(5);
 
-					header('Location: index.php?module=Migration&view=Index&mode=step1');
+						header('Location: index.php?module=Migration&view=Index&mode=step1');
+					} else {
+						$errorMessage = 'ERROR EXTRACTING MIGRATION ZIP FILE!';
+						header('Location: migrate/index.php?error='.$errorMessage);
+					}
 				} else {
-					$errorMessage = 'ERROR EXTRACTING MIGRATION ZIP FILE!';
+					$errorMessage = 'ERROR READING MIGRATION ZIP FILE!';
 					header('Location: migrate/index.php?error='.$errorMessage);
 				}
 			} else {
-				$errorMessage = 'ERROR READING MIGRATION ZIP FILE!';
+				$errorMessage = 'INVALID CREDENTIALS';
 				header('Location: migrate/index.php?error='.$errorMessage);
 			}
 		} else {
-			$errorMessage = 'INVALID CREDENTIALS';
+			$errorMessage = 'PERMISSION DENIED! ONLY ADMIN USERS CAN ACCESS';
 			header('Location: migrate/index.php?error='.$errorMessage);
 		}
 	}

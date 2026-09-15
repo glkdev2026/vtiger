@@ -8,21 +8,21 @@
  * All Rights Reserved.
  *************************************************************************************/
 
-function vtws_file_retrieve($file_id, $user) {
+function vtws_file_retrieve($id, $user) {
 
     global $log, $adb;
 
-    $idComponents = vtws_getIdComponents($file_id);
+    $idComponents = vtws_getIdComponents($id);
     $attachmentId = $idComponents[1];
     
-    $id = vtws_getAttachmentRecordId($attachmentId);
-    if(!$id || !$attachmentId) {
+    $aid = vtws_getAttachmentRecordId($attachmentId);
+    if(!$aid || !$attachmentId) {
         throw new WebServiceException(WebServiceErrorCode::$RECORDNOTFOUND, "Record you are trying to access is not found");
     } else {
-        $id = vtws_getId($idComponents[0], $id);
+        $aid = vtws_getId($idComponents[0], $aid);
     }
     
-    $webserviceObject = VtigerWebserviceObject::fromId($adb, $id);
+    $webserviceObject = VtigerWebserviceObject::fromId($adb, $aid);
     $handlerPath = $webserviceObject->getHandlerPath();
     $handlerClass = $webserviceObject->getHandlerClass();
     
@@ -31,7 +31,7 @@ function vtws_file_retrieve($file_id, $user) {
 
     // If setype of the record is not equal to webservice entity
     $meta = $handler->getMeta();
-    $elementType = $meta->getObjectEntityName($id);
+    $elementType = $meta->getObjectEntityName($aid);
     if ($elementType !== $webserviceObject->getEntityName()) {
         throw new WebServiceException(WebServiceErrorCode::$INVALIDID, "Id specified is incorrect");
     }
@@ -43,7 +43,7 @@ function vtws_file_retrieve($file_id, $user) {
         throw new WebServiceException(WebServiceErrorCode::$ACCESSDENIED, "Permission to perform the operation is denied");
     }
 
-    $response = $handler->file_retrieve($id, $elementType, $attachmentId);
+    $response = $handler->file_retrieve($aid, $elementType, $attachmentId);
     VTWS_PreserveGlobal::flush();
 
     return $response;

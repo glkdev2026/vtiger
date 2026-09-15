@@ -32,7 +32,7 @@ class Users_ListView_Model extends Vtiger_ListView_Model {
         
         $usersList = Users_Record_Model::getActiveAdminUsers();
         $settingLinks = array();
-        if(count($usersList) ) {
+        if(php7_count($usersList) ) {
             $changeOwnerLink = array(
                 'linktype' => 'LISTVIEWSETTING',
 				'linklabel' => 'LBL_CHANGE_OWNER',
@@ -43,7 +43,7 @@ class Users_ListView_Model extends Vtiger_ListView_Model {
         }
 
 		$settingLinks = array_merge($settingLinks, $this->getSettingLinks());
-        if(count($settingLinks) > 0) {
+        if(php7_count($settingLinks) > 0) {
             foreach($settingLinks as $settingLink) {
                 $links['LISTVIEWSETTING'][] = Vtiger_Link_Model::getInstanceFromValues($settingLink);
             }
@@ -69,12 +69,12 @@ class Users_ListView_Model extends Vtiger_ListView_Model {
 		$listQuery = parent::getQuery();
 		$searchKey = $this->get('search_key');
         $db = PearDatabase::getInstance();
+		$param=array();
 
 		if(!empty($searchKey)) {
 			$listQueryComponents = explode(" WHERE vtiger_users.status='Active' AND", $listQuery);
 			$listQuery = implode(' WHERE ', $listQueryComponents);
 		}
-		$listQuery .= " AND (vtiger_users.user_name != 'admin' OR vtiger_users.is_owner = 1)";
 
 		// Impose non-admin restrictions.
 		$user = vglobal('current_user');

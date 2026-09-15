@@ -33,7 +33,7 @@ class EmailTemplates_MassDelete_Action extends Vtiger_Mass_Action {
 
 	public function process(Vtiger_Request $request) {
 		$moduleName = $request->getModule();
-
+		$systemTemplate = false;
 		$recordModel = new EmailTemplates_Record_Model();
 		$recordModel->setModule($moduleName);
 		$selectedIds = $request->get('selected_ids');
@@ -62,12 +62,12 @@ class EmailTemplates_MassDelete_Action extends Vtiger_Mass_Action {
 		$response->emit();
 	}
 	
-	public function getRecordsListFromRequest(Vtiger_Request $request, $recordModel) {
+	public function getRecordsListFromRequest(Vtiger_Request $request, $recordModel = false) {
 		$selectedIds = $request->get('selected_ids');
 		$excludedIds = $request->get('excluded_ids');
 		
 		if(!empty($selectedIds) && $selectedIds != 'all') {
-			if(!empty($selectedIds) && count($selectedIds) > 0) {
+			if(!empty($selectedIds) && php7_count($selectedIds) > 0) {
 				return $selectedIds;
 			}
 		}

@@ -13,6 +13,7 @@ include_once('vtlib/Vtiger/Field.php');
 include_once('vtlib/Vtiger/Filter.php');
 include_once('vtlib/Vtiger/Profile.php');
 include_once('vtlib/Vtiger/Menu.php');
+include_once('vtlib/Vtiger/AppMenu.php');
 include_once('vtlib/Vtiger/Link.php');
 include_once('vtlib/Vtiger/Event.php');
 include_once('vtlib/Vtiger/Webservice.php');
@@ -23,6 +24,7 @@ require_once 'includes/runtime/Cache.php';
  * Provides API to work with vtiger CRM Module
  * @package vtlib
  */
+#[\AllowDynamicProperties]
 class Vtiger_ModuleBasic {
 	/** ID of this instance */
 	var $id = false;
@@ -91,9 +93,10 @@ class Vtiger_ModuleBasic {
 			$this->initialize2();
 		}
 		$this->source = $valuemap['source'];
-		$this->isSyncable = $valuemap['issyncable'];
-		$this->allowDuplicates = $valuemap['allowduplicates'];
-		$this->syncActionForDuplicate = $valuemap['sync_action_for_duplicates'];
+
+		if (isset($valuemap['issyncable'])) $this->isSyncable = $valuemap['issyncable'];
+		if (isset($valuemap['allowduplicates'])) $this->allowDuplicates = $valuemap['allowduplicates'];
+		if (isset($valuemap['sync_action_for_duplicates'])) $this->syncActionForDuplicate = $valuemap['sync_action_for_duplicates'];
 	}
 
 	/**
@@ -200,7 +203,10 @@ class Vtiger_ModuleBasic {
 
 		if (!empty($parentTab)) {
 			$menuInstance = Vtiger_Menu::getInstance($parentTab);
-			$menuInstance->addModule($moduleInstance);
+			if ($menuInstance) $menuInstance->addModule($moduleInstance);
+
+			$appmenuInstance = Vtiger_AppMenu::getInstance($parentTab);
+			if ($appmenuInstance) $appmenuInstance->addModule($moduleInstance);
 		}
 
 		self::log("Creating Module $this->name ... DONE");
@@ -271,6 +277,7 @@ class Vtiger_ModuleBasic {
 		Vtiger_Profile::deleteForModule($this);
 		Vtiger_Link::deleteAll($this->id);
 		Vtiger_Menu::detachModule($this);
+		Vtiger_AppMenu::detachModule($this);
 		self::syncfile();
         Vtiger_Cache::flushModuleCache($this->name);
 	}

@@ -10,6 +10,8 @@
 
 class RecycleBin_List_View extends Vtiger_Index_View {
 
+	protected $listviewinitcalled = false;
+
 	function checkPermission(Vtiger_Request $request) {
 		$moduleName = $request->getModule();
 		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
@@ -68,25 +70,30 @@ class RecycleBin_List_View extends Vtiger_Index_View {
 	 * Function to initialize the required data in smarty to display the List View Contents
 	 */
 	public function initializeListViewContents(Vtiger_Request $request, Vtiger_Viewer $viewer) {
-		$moduleName = $request->getModule();
-		$sourceModule = $request->get('sourceModule');
 
-		$pageNumber = $request->get('page');
-		$orderBy = $request->get('orderby');
-		$sortOrder = $request->get('sortorder');
-		$searchKey = $request->get('search_key');
-		$searchValue = $request->get('search_value');
-		$operator = $request->get('operator');
-		$searchParams = $request->get('search_params');
-		$listHeaders = $request->get('list_headers', array());
+		if($this->listviewinitcalled){
+			return;
+		}
+			$moduleName = $request->getModule();
+			$sourceModule = $request->get('sourceModule');
 
-		$orderParams = Vtiger_ListView_Model::getSortParamsSession($moduleName . '_' . $sourceModule);
+			$pageNumber = $request->get('page');
+			$orderBy = $request->get('orderby');
+			$sortOrder = $request->get('sortorder');
+			$searchKey = $request->get('search_key');
+			$searchValue = $request->get('search_value');
+			$operator = $request->get('operator');
+			$searchParams = $request->get('search_params');
+			$listHeaders = $request->get('list_headers', array());
+			$starFilterMode = $request->get('starFilterMode');
+
+			$orderParams = Vtiger_ListView_Model::getSortParamsSession($moduleName . '_' . $sourceModule);
 		if ($request->get('mode') == 'removeSorting') {
 			Vtiger_ListView_Model::deleteParamsSession($moduleName . '_' . $sourceModule, array('orderby', 'sortorder'));
 			$orderBy = '';
 			$sortOrder = '';
 		}
-		if (empty($listHeaders)) {
+		if(empty($listHeaders) && $orderParams && isset($orderParams['list_headers'])) {
 			$listHeaders = $orderParams['list_headers'];
 		}
 		if (empty($orderBy) && empty($searchValue) && empty($pageNumber) && empty($searchParams)) {
@@ -137,7 +144,7 @@ class RecycleBin_List_View extends Vtiger_Index_View {
 		$linkModels = $moduleModel->getListViewMassActions($linkParams);
 
 		 // preProcess is already loading this, we can reuse
-		if (!$this->pagingModel) {
+		if (!property_exists($this, 'pagingModel') || !$this->pagingModel) {
 			$pagingModel = new Vtiger_Paging_Model();
 			$pagingModel->set('page', $pageNumber);
 		} else {
@@ -165,18 +172,18 @@ class RecycleBin_List_View extends Vtiger_Index_View {
 			}
 		}
 
-		if(!$this->listViewHeaders){
+		if(!property_exists($this, 'listViewHeaders') || !$this->listViewHeaders){
 			$this->listViewHeaders = $listViewModel->getListViewHeaders();
 		}
-		if(!$this->listViewEntries){
+		if(!property_exists($this, 'listViewEntries') || !$this->listViewEntries){
 			$this->listViewEntries = $listViewModel->getListViewEntries($pagingModel);
 		}
 
-		if(!$this->pagingModel){
+		if(!property_exists($this, 'pagingModel') || !$this->pagingModel){
 			$this->pagingModel = $pagingModel;
 		}
 
-		$noOfEntries = count($this->listViewEntries);
+		$noOfEntries = php7_count($this->listViewEntries);
 
 		$viewer->assign('MODULE', $moduleName);
 
@@ -217,6 +224,8 @@ class RecycleBin_List_View extends Vtiger_Index_View {
 			$viewer->assign('LISTVIEW_COUNT', $totalCount);
 		}
 		$viewer->assign('IS_MODULE_DELETABLE', $listViewModel->getModule()->isPermitted('Delete'));
+
+		$this->listviewinitcalled = true; // to make a early exit if it is called more than once
 
 	}
 

@@ -16,6 +16,7 @@ class Vtiger_List_View extends Vtiger_Index_View {
 	protected $noOfEntries = false;
 	protected $pagingModel = false;
 	protected $listViewModel = false;
+	protected $listviewinitcalled = false;
 	function __construct() {
 		parent::__construct();
 	}
@@ -39,7 +40,7 @@ class Vtiger_List_View extends Vtiger_Index_View {
 		}
 
 		$viewer = $this->getViewer($request);
-		$cvId = $this->viewName;
+		$cvId = isset($this->viewName) ? $this->viewName : 0;
 
 		if(!$cvId) {
 			$customView = new CustomView();
@@ -47,6 +48,7 @@ class Vtiger_List_View extends Vtiger_Index_View {
 		}
 		$listHeaders = $request->get('list_headers', array());
 		$tag = $request->get('tag');
+		if (!is_numeric($tag)) $tag = "";
 
 		$listViewSessionKey = $moduleName.'_'.$cvId;
 		if(!empty($tag)) {
@@ -56,7 +58,7 @@ class Vtiger_List_View extends Vtiger_Index_View {
                 $this->listViewModel = Vtiger_ListView_Model::getInstance($moduleName, $cvId, $listHeaders);
 		$orderParams = $this->listViewModel->getSortParamsSession($listViewSessionKey);
 
-		if(empty($listHeaders)) {
+		if(empty($listHeaders) && is_array($orderParams) && array_key_exists('list_headers', $orderParams)) {
 			$listHeaders = $orderParams['list_headers'];
 		}
 
@@ -159,21 +161,26 @@ class Vtiger_List_View extends Vtiger_Index_View {
 	 * Function to initialize the required data in smarty to display the List View Contents
 	 */
 	public function initializeListViewContents(Vtiger_Request $request, Vtiger_Viewer $viewer) {
-		$moduleName = $request->getModule();
-		$cvId = $this->viewName;
-		$pageNumber = $request->get('page');
-		$orderBy = $request->get('orderby');
-		$sortOrder = $request->get('sortorder');
-		$searchKey = $request->get('search_key');
-		$searchValue = $request->get('search_value');
-		$operator = $request->get('operator');
-		$searchParams = $request->get('search_params');
-		$tagParams = $request->get('tag_params');
-		$starFilterMode = $request->get('starFilterMode');
-		$listHeaders = $request->get('list_headers', array());
-		$tag = $request->get('tag');
-		$requestViewName = $request->get('viewname');
-		$tagSessionKey = $moduleName.'_TAG';
+
+		if($this->listviewinitcalled){
+			return;
+		}
+			$moduleName = $request->getModule();
+			$cvId = $this->viewName;
+			$pageNumber = $request->get('page');
+			$orderBy = $request->get('orderby');
+			$sortOrder = $request->get('sortorder');
+			$searchKey = $request->get('search_key');
+			$searchValue = $request->get('search_value');
+			$operator = $request->get('operator');
+			$searchParams = $request->get('search_params');
+			$tagParams = $request->get('tag_params');
+			$starFilterMode = $request->get('starFilterMode');
+			$listHeaders = $request->get('list_headers', array());
+			$tag = $request->get('tag');
+			if (!is_numeric($tag)) $tag = "";
+			$requestViewName = $request->get('viewname');
+			$tagSessionKey = $moduleName.'_TAG';
                 
                 if(!$this->listViewModel) {
 			$listViewModel = Vtiger_ListView_Model::getInstance($moduleName, $cvId, $listHeaders);
@@ -216,32 +223,32 @@ class Vtiger_List_View extends Vtiger_Index_View {
 			$orderBy = '';
 			$sortOrder = '';
 		}
-		if(empty($listHeaders)) {
+		if(empty($listHeaders) && is_array($orderParams) && array_key_exists('list_headers', $orderParams)) {
 			$listHeaders = $orderParams['list_headers'];
 		}
                 
                 
-		if(!empty($tag) && empty($tagParams)){
+		if(!empty($tag) && empty($tagParams) && is_array($orderParams)){
                     $tagParams = $orderParams['tag_params'];
 		}
                 
 		if(empty($orderBy) && empty($searchValue) && empty($pageNumber)) {
 			if($orderParams) {
-				$pageNumber = $orderParams['page'];
-				$orderBy = $orderParams['orderby'];
-				$sortOrder = $orderParams['sortorder'];
-				$searchKey = $orderParams['search_key'];
-				$searchValue = $orderParams['search_value'];
-				$operator = $orderParams['operator'];
-                                if(empty($tagParams)){
-					$tagParams = $orderParams['tag_params'];
+				$pageNumber = isset($orderParams['page']) ? $orderParams['page'] : "";
+				$orderBy = isset($orderParams['orderby']) ? $orderParams['orderby'] : "";
+				$sortOrder = isset($orderParams['sortorder']) ? $orderParams['sortorder'] : "";
+				$searchKey = isset($orderParams['search_key']) ? $orderParams['search_key'] : "";
+				$searchValue = isset($orderParams['search_value']) ? $orderParams['search_value'] : "";
+				$operator = isset($orderParams['operator']) ? $orderParams['operator'] : "";
+                if(empty($tagParams)){
+					$tagParams = isset($orderParams['tag_params']) ? $orderParams['tag_params'] : "";
 				}
 				if(empty($searchParams)) {
-					$searchParams = $orderParams['search_params']; 
+					$searchParams = isset($orderParams['search_params']) ? $orderParams['search_params'] : ""; 
 				}
 
 				if(empty($starFilterMode)) {
-					$starFilterMode = $orderParams['star_filter_mode'];
+					$starFilterMode = isset($orderParams['star_filter_mode']) ? $orderParams['star_filter_mode'] : "";
 				}
 			}
 		} else if($request->get('nolistcache') != 1) {
@@ -299,7 +306,7 @@ class Vtiger_List_View extends Vtiger_Index_View {
 		if(empty($searchParams)) {
 			$searchParams = array();
 		}
-		if(count($searchParams) == 2 && empty($searchParams[1])) {
+		if(php7_count($searchParams) == 2 && empty($searchParams[1])) {
 			unset($searchParams[1]);
 		}
 
@@ -344,7 +351,7 @@ class Vtiger_List_View extends Vtiger_Index_View {
 			$this->noOfEntries = $pagingModel->get('_listcount');
 		}
 		if(!$this->noOfEntries) {
-			$noOfEntries = count($this->listViewEntries);
+			$noOfEntries = php7_count($this->listViewEntries);
 		} else {
 			$noOfEntries = $this->noOfEntries;
 		}
@@ -363,15 +370,15 @@ class Vtiger_List_View extends Vtiger_Index_View {
 		}
 		$viewer->assign('PAGE_NUMBER',$pageNumber);
 
-		if(!$this->moduleFieldStructure) {
+		if(!isset($this->moduleFieldStructure) || !$this->moduleFieldStructure) {
 			$recordStructure = Vtiger_RecordStructure_Model::getInstanceForModule($listViewModel->getModule(), Vtiger_RecordStructure_Model::RECORD_STRUCTURE_MODE_FILTER);
 			$this->moduleFieldStructure = $recordStructure->getStructure();   
 		}
 
-		if(!$this->tags) {
+		if(!isset($this->tags) || !$this->tags) {
 			$this->tags = Vtiger_Tag_Model::getAllAccessible($currentUser->id, $moduleName);
 		}
-		if(!$this->allUserTags) {
+		if(!isset($this->allUserTags) || !$this->allUserTags) {
 			$this->allUserTags = Vtiger_Tag_Model::getAllUserTags($currentUser->getId());
 		}
 
@@ -435,6 +442,8 @@ class Vtiger_List_View extends Vtiger_Index_View {
 
 		$picklistDependencyDatasource = Vtiger_DependencyPicklist::getPicklistDependencyDatasource($moduleName);
 		$viewer->assign('PICKIST_DEPENDENCY_DATASOURCE',Zend_Json::encode($picklistDependencyDatasource));
+
+		$this->listviewinitcalled = true; // to make a early exit if it is called more than once
 	}
 
 	protected function assignCustomViews(Vtiger_Request $request, Vtiger_Viewer $viewer) {

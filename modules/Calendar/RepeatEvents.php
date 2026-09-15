@@ -22,8 +22,8 @@ class Calendar_RepeatEvents {
 	 */
 	static function mktime($fulldateString) {
 		$splitpart = self::splittime($fulldateString);
-		$datepart = split('-', $splitpart[0]);
-		$timepart = split(':', $splitpart[1]);
+		$datepart = explode('-', $splitpart[0]);
+		$timepart = explode(':', $splitpart[1]);
 		return mktime($timepart[0], $timepart[1], 0, $datepart[1], $datepart[2], $datepart[0]);
 	}
 	/**
@@ -57,7 +57,7 @@ class Calendar_RepeatEvents {
 	 * Split full timing into date and time part.
 	 */
 	static function splittime($fulltiming) {
-		return split(' ', $fulltiming);
+		return explode(' ', $fulltiming);
 	}
 	/**
 	 * Calculate the time interval to create repeated event entries.
@@ -394,7 +394,7 @@ class Calendar_RepeatEvents {
 	}
 	
     static function checkRecurringDataChanged($recurObjRequest, $recurObjDb) {
-        if(($recurObjRequest->recur_type == $recurObjDb->recur_type) && ($recurObjRequest->recur_freq == $recurObjDb->recur_freq)
+        if(($recurObjRequest && $recurObjDb) && ($recurObjRequest->recur_type == $recurObjDb->recur_type) && ($recurObjRequest->recur_freq == $recurObjDb->recur_freq)
                 && ($recurObjRequest->recurringdates[0] == $recurObjDb->recurringdates[0]) && ($recurObjRequest->recurringenddate == $recurObjDb->recurringenddate)
                 && ($recurObjRequest->dayofweek_to_rpt == $recurObjDb->dayofweek_to_rpt) && ($recurObjRequest->repeat_monthby == $recurObjDb->repeat_monthby)
                 && ($recurObjRequest->rptmonth_datevalue == $recurObjDb->rptmonth_datevalue) && ($recurObjRequest->rptmonth_daytype == $recurObjDb->rptmonth_daytype)) {

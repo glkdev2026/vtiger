@@ -33,16 +33,19 @@ class VTQL_ParseryyToken implements ArrayAccess
         return $this->_string;
     }
 
+    #[\ReturnTypeWillChange]
     function offsetExists($offset)
     {
         return isset($this->metadata[$offset]);
     }
 
+    #[\ReturnTypeWillChange]
     function offsetGet($offset)
     {
         return $this->metadata[$offset];
     }
 
+    #[\ReturnTypeWillChange]
     function offsetSet($offset, $value)
     {
         if ($offset === null) {
@@ -52,7 +55,7 @@ class VTQL_ParseryyToken implements ArrayAccess
                 $this->metadata = array_merge($this->metadata, $x);
                 return;
             }
-            $offset = count($this->metadata);
+            $offset = php7_count($this->metadata);
         }
         if ($value === null) {
             return;
@@ -66,6 +69,7 @@ class VTQL_ParseryyToken implements ArrayAccess
         }
     }
 
+    #[\ReturnTypeWillChange]
     function offsetUnset($offset)
     {
         unset($this->metadata[$offset]);
@@ -204,15 +208,18 @@ function buildSelectStmt($sqlDump){
 	$deletedQuery = $meta->getEntityDeletedQuery();
 	$accessControlQuery = $meta->getEntityAccessControlQuery();
 	$this->query = $this->query.' '.$accessControlQuery;
-	if($sqlDump['where_condition']){
-		if((sizeof($sqlDump['where_condition']['column_names']) == 
-		sizeof($sqlDump['where_condition']['column_values'])) && 
-		(sizeof($sqlDump['where_condition']['column_operators']) == sizeof($sqlDump['where_condition']['operators'])+1)){
+	if(isset($sqlDump['where_condition'])){
+		// ensure init before use
+		if(!isset($sqlDump['where_condition']['operators'])) $sqlDump['where_condition']['operators'] = array();
+
+		if((php7_sizeof($sqlDump['where_condition']['column_names']) == 
+		php7_sizeof($sqlDump['where_condition']['column_values'])) && 
+		(php7_sizeof($sqlDump['where_condition']['column_operators']) == php7_sizeof($sqlDump['where_condition']['operators'])+1)){
 			$this->query = $this->query.' WHERE (';
 			$i=0;
 			$referenceFields = $meta->getReferenceFieldDetails();
 			$ownerFields = $meta->getOwnerFields();
-			for(;$i<sizeof($sqlDump['where_condition']['column_values']);++$i){
+			for(;$i<php7_sizeof($sqlDump['where_condition']['column_values']);++$i){
 				if(!$fieldcol[$sqlDump['where_condition']['column_names'][$i]]){
 					throw new WebServiceException(WebServiceErrorCode::$ACCESSDENIED, "Permission to access ".$sqlDump['where_condition']['column_names'][$i]." attribute denied.");
 				}
@@ -253,7 +260,7 @@ function buildSelectStmt($sqlDump){
 				}
 				$this->query = $this->query.$columnTable[$fieldcol[$whereField]].'.'.
 									$fieldcol[$whereField]." ".$whereOperator." ".$whereValue;
-				if($i <sizeof($sqlDump['where_condition']['column_values'])-1){
+				if($i <php7_sizeof($sqlDump['where_condition']['column_values'])-1){
 					$this->query = $this->query.' ';
 					$this->query = $this->query.$sqlDump['where_condition']['operators'][$i].' ';
 				}
@@ -280,7 +287,7 @@ function buildSelectStmt($sqlDump){
 	
 	$this->query = $this->query.' '.$deletedQuery;
 	
-	if($sqlDump['orderby']){
+	if(isset($sqlDump['orderby'])){
 		$i=0;
 		$this->query = $this->query.' ORDER BY ';
 		foreach($sqlDump['orderby'] as $ind=>$field){
@@ -291,14 +298,14 @@ function buildSelectStmt($sqlDump){
 				$this->query = $this->query.','.$columnTable[$fieldcol[$field]].".".$fieldcol[$field];
 			}
 		}
-		if($sqlDump['sortOrder']) {
+		if(isset($sqlDump['sortOrder'])) {
 			$this->query .= ' '.$sqlDump['sortOrder'];
 		}
 	}
-	if($sqlDump['limit']){
+	if(isset($sqlDump['limit'])){
 		$i=0;
 		$offset =false;
-		if(sizeof($sqlDump['limit'])>1){
+		if(php7_sizeof($sqlDump['limit'])>1){
 			$offset = true;
 		}
 		$this->query = $this->query.' LIMIT ';
@@ -718,7 +725,7 @@ static public $yy_action = array(
         if ($tokenType === 0) {
             return 'End of Input';
         }
-        if ($tokenType > 0 && $tokenType < count(self::$yyTokenName)) {
+        if ($tokenType > 0 && $tokenType < php7_count(self::$yyTokenName)) {
             return self::$yyTokenName[$tokenType];
         } else {
             return "Unknown";
@@ -760,7 +767,7 @@ static public $yy_action = array(
      */
     function yy_pop_parser_stack()
     {
-        if (!count($this->yystack)) {
+        if (!php7_count($this->yystack)) {
             return;
         }
         $yytos = array_pop($this->yystack);
@@ -967,7 +974,7 @@ static public $yy_action = array(
         $i += $iLookAhead;
         if ($i < 0 || $i >= self::YY_SZ_ACTTAB ||
               self::$yy_lookahead[$i] != $iLookAhead) {
-            if (count(self::$yyFallback) && $iLookAhead < count(self::$yyFallback)
+            if (php7_count(self::$yyFallback) && $iLookAhead < php7_count(self::$yyFallback)
                    && ($iFallback = self::$yyFallback[$iLookAhead]) != 0) {
                 if (self::$yyTraceFILE) {
                     fwrite(self::$yyTraceFILE, self::$yyTracePrompt . "FALLBACK " .
@@ -1212,7 +1219,7 @@ $this->out['where_condition']['operators'][] = $this->yystack[$this->yyidx + 0]-
 $this->out['columnDone']=true;
 $this->out['where_condition']['column_names'][] = $this->yystack[$this->yyidx + -2]->minor;
 if(strcmp($this->yystack[$this->yyidx + -2]->minor, 'id')===0){
-$prev = $this->out['where_condition']['column_values'][sizeof($this->out['where_condition']['column_values'])-1];
+$prev = $this->out['where_condition']['column_values'][php7_sizeof($this->out['where_condition']['column_values'])-1];
 if(is_array($prev)){
 $new = array();
 foreach($prev as $ind=>$val){
@@ -1220,21 +1227,22 @@ $val = trim($val,'\'"');
 $value = vtws_getIdComponents($val);
 $new[] = $value[1];
 }
-$this->out['where_condition']['column_values'][sizeof($this->out['where_condition']['column_values'])-1] = $new;
+$this->out['where_condition']['column_values'][php7_sizeof($this->out['where_condition']['column_values'])-1] = $new;
 }else{
 $prev = trim($prev,'\'"');
 $value = vtws_getIdComponents($prev);
-if(strcasecmp($this->out['where_condition']['column_operators'][sizeof($this->out['where_condition']['column_operators'])-1],'like')===0){
+if(strcasecmp($this->out['where_condition']['column_operators'][php7_sizeof($this->out['where_condition']['column_operators'])-1],'like')===0){
 $value[1] = "'".$value[1]."'";
 }
-$this->out['where_condition']['column_values'][sizeof($this->out['where_condition']['column_values'])-1] = $value[1];
+$this->out['where_condition']['column_values'][php7_sizeof($this->out['where_condition']['column_values'])-1] = $value[1];
 }
 }
     }
 #line 1240 "e:\workspace\nonadmin\pkg\vtiger\extensions\Webservices\VTQL_parser.php"
 #line 82 "e:\workspace\nonadmin\pkg\vtiger\extensions\Webservices\VTQL_parser.y"
     function yy_r17(){
-$length = ($this->out['where_condition']['column_values'])? sizeof($this->out['where_condition']['column_values']):0;
+        $this->out['where_condition']['column_values'] = isset($this->out['where_condition']['column_values']) ? $this->out['where_condition']['column_values'] : array();
+$length = ($this->out['where_condition']['column_values'])? php7_sizeof($this->out['where_condition']['column_values']):0;
 $pos = $length - 1;
 if($pos < 0){
 $pos = 0;
@@ -1322,7 +1330,7 @@ $this->out['limit'][] = $this->yystack[$this->yyidx + 0]->minor;
 #line 151 "e:\workspace\nonadmin\pkg\vtiger\extensions\Webservices\VTQL_parser.y"
     function yy_r41(){
 global $adb;
-if(!$this->out['meta']){
+if(!isset($this->out['meta'])){
 $module = $this->out['moduleName'];
 $handler = vtws_getModuleHandlerFromName($module,$this->user);
 $objectMeta = $handler->getMeta();
@@ -1337,7 +1345,7 @@ foreach($this->out['column_list'] as $ind=>$field){
 $columns[] = $fieldcol[$field];
 }
 }
-if($this->out['where_condition']){
+if(isset($this->out['where_condition']) && isset($this->out['where_condition']['column_names'])){
 foreach($this->out['where_condition']['column_names'] as $ind=>$field){
 $columns[] = $fieldcol[$field];
 }
@@ -1355,6 +1363,7 @@ array_push($tables,$tableName);
 $firstTable = $objectMeta->getEntityBaseTable();
 $tabNameIndex = $objectMeta->getEntityTableIndexList();
 $firstIndex = $tabNameIndex[$firstTable];
+if (!isset($this->out['defaultJoinConditons'])) $this->out['defaultJoinConditions'] = '';
 foreach($tables as $ind=>$table){
 if($firstTable!=$table){
 	if(!isset($tabNameIndex[$table]) && $table == "vtiger_crmentity"){
@@ -1416,7 +1425,7 @@ if($firstTable!=$table){
         //int $yysize;                     /* Amount to pop the stack */
         $yymsp = $this->yystack[$this->yyidx];
         if (self::$yyTraceFILE && $yyruleno >= 0 
-              && $yyruleno < count(self::$yyRuleName)) {
+              && $yyruleno < php7_count(self::$yyRuleName)) {
             fprintf(self::$yyTraceFILE, "%sReduce (%d) [%s].\n",
                 self::$yyTracePrompt, $yyruleno,
                 self::$yyRuleName[$yyruleno]);

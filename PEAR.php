@@ -99,6 +99,7 @@ $GLOBALS['_PEAR_error_handler_stack']    = array();
  * @since      Class available since PHP 4.0.2
  * @link        http://pear.php.net/manual/en/core.pear.php#core.pear.pear
  */
+#[\AllowDynamicProperties]
 class PEAR
 {
     // {{{ properties
@@ -234,7 +235,7 @@ class PEAR
     * @return mixed   A reference to the variable. If not set it will be
     *                 auto initialised to NULL.
     */
-    function &getStaticProperty($class, $var)
+    static function &getStaticProperty($class, $var)
     {
         static $properties;
         return $properties[$class][$var];
@@ -252,7 +253,7 @@ class PEAR
     * @param  mixed $args  The arguments to pass to the function
     * @return void
     */
-    function registerShutdownFunc($func, $args = array())
+    static function registerShutdownFunc($func, $args = array())
     {
         $GLOBALS['_PEAR_shutdown_funcs'][] = array($func, $args);
     }
@@ -271,7 +272,7 @@ class PEAR
      * @access  public
      * @return  bool    true if parameter is an error
      */
-    function isError($data, $code = null)
+    static function isError($data, $code = null)
     {
         if (is_a($data, 'PEAR_Error')) {
             if (is_null($code)) {
@@ -327,7 +328,7 @@ class PEAR
      * @since PHP 4.0.5
      */
 
-    function setErrorHandling($mode = null, $options = null)
+    static function setErrorHandling($mode = null, $options = null)
     {
         if (isset($this) && is_a($this, 'PEAR')) {
             $setmode     = $this->_default_error_mode;
@@ -516,7 +517,7 @@ class PEAR
      * @see PEAR::setErrorHandling
      * @since PHP 4.0.5
      */
-    function &raiseError($message = null,
+    static function &raiseError($message = null,
                          $code = null,
                          $mode = null,
                          $options = null,
@@ -814,6 +815,7 @@ function _PEAR_call_destructors()
  * @see        PEAR::raiseError(), PEAR::throwError()
  * @since      Class available since PHP 4.0.2
  */
+#[\AllowDynamicProperties]
 class PEAR_Error
 {
     // {{{ properties

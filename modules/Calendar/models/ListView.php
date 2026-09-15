@@ -130,6 +130,7 @@ class Calendar_ListView_Model extends Vtiger_ListView_Model {
 		$headerFields = $listViewContoller->getListViewHeaderFields();
 		foreach($headerFields as $fieldName => $webserviceField) {
 			if($webserviceField && !in_array($webserviceField->getPresence(), array(0,2))) continue;
+			
 			if($webserviceField && $webserviceField->parentReferenceField && !in_array($webserviceField->parentReferenceField->getPresence(), array(0,2))){
 				continue;
 			}
@@ -137,7 +138,7 @@ class Calendar_ListView_Model extends Vtiger_ListView_Model {
             if($webserviceField->getDisplayType() == '6') continue;
 			// check if the field is reference field
 			preg_match('/(\w+) ; \((\w+)\) (\w+)/', $fieldName, $matches);
-			if(count($matches) > 0) {
+			if(php7_count($matches) > 0) {
 				list($full, $referenceParentField, $referenceModule, $referenceFieldName) = $matches;
 				$referenceModuleModel = Vtiger_Module_Model::getInstance($referenceModule);
 				$referenceFieldModel = Vtiger_Field_Model::getInstance($referenceFieldName, $referenceModuleModel);
@@ -191,7 +192,7 @@ class Calendar_ListView_Model extends Vtiger_ListView_Model {
         }
         
         $glue = "";
-        if(count($queryGenerator->getWhereFields()) > 0 && (count($searchParams)) > 0) {
+        if(php7_count($queryGenerator->getWhereFields()) > 0 && (php7_count($searchParams)) > 0) {
             $glue = QueryGenerator::$AND;
         }
         $queryGenerator->parseAdvFilterList($searchParams, $glue);
@@ -285,7 +286,7 @@ class Calendar_ListView_Model extends Vtiger_ListView_Model {
 
 			// if the user is having view all permission then it should show the record
 			// as we are showing in detail view
-			if($profileGlobalPermission[1] ==0 || $profileGlobalPermission[2] ==0) {
+			if(isset($profileGlobalPermission) && ($profileGlobalPermission[1] ==0 || $profileGlobalPermission[2] ==0)) {
 				$visibility = false;
 			}
 
@@ -298,7 +299,7 @@ class Calendar_ListView_Model extends Vtiger_ListView_Model {
 				}
 				$record['subject'] = vtranslate('Busy','Events').'*';
 			}
-			if($record['activitytype'] == 'Task') {
+			if(isset($record['activitytype']) && $record['activitytype'] == 'Task') {
 				unset($record['visibility']);
 				unset($rawData['visibility']);
 			}
@@ -310,7 +311,7 @@ class Calendar_ListView_Model extends Vtiger_ListView_Model {
 			}
 		}
 		//setting list view count before unsetting permission denied records - to make sure paging should not fail
-		$pagingModel->set('_listcount', count($listViewRecordModels));
+		$pagingModel->set('_listcount', php7_count($listViewRecordModels));
 		foreach($recordsToUnset as $record) {
 			unset($listViewRecordModels[$record]);
 		}

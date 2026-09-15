@@ -167,7 +167,7 @@
 															<div class="defaultValue col-sm-12 {if !$FIELD_MODEL->hasDefaultValue()}disabled{/if} 
 																 {if $FIELD_MODEL->isDefaultValueOptionDisabled()} cursorPointerNotAllowed {/if}">
 																{assign var=DEFAULT_VALUE value=$FIELD_MODEL->getDefaultFieldValueToViewInV7FieldsLayOut()}
-																{if $DEFAULT_VALUE}
+																{if isset($DEFAULT_VALUE) && $DEFAULT_VALUE !== ''}
 																	{if is_array($DEFAULT_VALUE)}
 																		{foreach key=DEFAULT_FIELD_NAME item=DEFAULT_FIELD_VALUE from=$DEFAULT_VALUE}
 																			<div class="row">
@@ -247,7 +247,7 @@
 										</li>
 									{/if}
 								{/foreach}
-								{if count($FIELDS_LIST)%2 eq 0 }
+								{if php7_count($FIELDS_LIST)%2 eq 0 }
 									{if $BLOCK_MODEL->isAddCustomFieldEnabled()}
 										<li class="row dummyRow">
 											<span class="dragUiText col-sm-8">
@@ -341,7 +341,7 @@
 															<div class="defaultValue col-sm-12 {if !$FIELD_MODEL->hasDefaultValue()}disabled{/if} 
 																 {if $FIELD_MODEL->isDefaultValueOptionDisabled()} cursorPointerNotAllowed {/if}">
 																{assign var=DEFAULT_VALUE value=$FIELD_MODEL->getDefaultFieldValueToViewInV7FieldsLayOut()}
-																{if $DEFAULT_VALUE}
+																{if isset($DEFAULT_VALUE) && $DEFAULT_VALUE !== ''}
 																	{if is_array($DEFAULT_VALUE)}
 																		{foreach key=DEFAULT_FIELD_NAME item=DEFAULT_FIELD_VALUE from=$DEFAULT_VALUE}
 																			<div class="row defaultValueContent">
@@ -420,7 +420,7 @@
 										</li>
 									{/if}
 								{/foreach}
-								{if count($FIELDS_LIST)%2 neq 0 }
+								{if php7_count($FIELDS_LIST)%2 neq 0 }
 									{if $BLOCK_MODEL->isAddCustomFieldEnabled()}
 										<li class="row dummyRow">
 											<span class="dragUiText col-sm-8">

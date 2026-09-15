@@ -150,6 +150,10 @@ class Calendar_Save_Action extends Vtiger_Save_Action {
 			if($fieldDataType == 'time' && $fieldValue !== null){
 				$fieldValue = Vtiger_Time_UIType::getTimeValueWithSeconds($fieldValue);
             }
+			if(is_array($fieldValue) && $fieldDataType == 'multipicklist'){
+				// Concatenating the array values of a multipicklist using implode to store them in the database.
+				$fieldValue = implode(' |##| ',$fieldValue);
+			}
             // End
             if ($fieldName === $request->get('field')) {
 				$fieldValue = $request->get('value');
@@ -159,6 +163,7 @@ class Calendar_Save_Action extends Vtiger_Save_Action {
 				if(!is_array($fieldValue)) {
 					$fieldValue = trim($fieldValue);
 				}
+                                $fieldValue = Vtiger_Util_Helper::validateFieldValue($fieldValue, $fieldModel);
 				$recordModel->set($fieldName, $fieldValue);
 			}
 		}

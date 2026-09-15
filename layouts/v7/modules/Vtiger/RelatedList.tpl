@@ -75,8 +75,12 @@
 									{if $HEADER_FIELD->get('column') eq 'time_start' or $HEADER_FIELD->get('column') eq 'time_end' or $HEADER_FIELD->getFieldDataType() eq 'reference'}
 									{else}
 										{assign var=FIELD_UI_TYPE_MODEL value=$HEADER_FIELD->getUITypeModel()}
-										{include file=vtemplate_path($FIELD_UI_TYPE_MODEL->getListSearchTemplateName(),$RELATED_MODULE_NAME) FIELD_MODEL= $HEADER_FIELD SEARCH_INFO=$SEARCH_DETAILS[$HEADER_FIELD->getName()] USER_MODEL=$USER_MODEL}
-										<input type="hidden" class="operatorValue" value="{$SEARCH_DETAILS[$HEADER_FIELD->getName()]['comparator']}">
+										{assign var=SEARCH_DETAILS_FIELD_INFO value=array('searchValue' => '', 'comparator' => '')}
+										{if isset($SEARCH_DETAILS[$HEADER_FIELD->getName()])}
+										{assign var=SEARCH_DETAILS_FIELD_INFO value=$SEARCH_DETAILS[$HEADER_FIELD->getName()]}
+										{/if}
+										{include file=vtemplate_path($FIELD_UI_TYPE_MODEL->getListSearchTemplateName(),$RELATED_MODULE_NAME) FIELD_MODEL= $HEADER_FIELD SEARCH_INFO=$SEARCH_DETAILS_FIELD_INFO USER_MODEL=$USER_MODEL}
+										<input type="hidden" class="operatorValue" value="{$SEARCH_DETAILS_FIELD_INFO['comparator']}">
 									{/if}
 								</th>
 							{/foreach}
@@ -124,8 +128,8 @@
 							{foreach item=HEADER_FIELD from=$RELATED_HEADERS}
 								{assign var=RELATED_HEADERNAME value=$HEADER_FIELD->get('name')}
 								{assign var=RELATED_LIST_VALUE value=$RELATED_RECORD->get($RELATED_HEADERNAME)}
-								<td class="relatedListEntryValues" title="{strip_tags($RELATED_RECORD->getDisplayValue($RELATED_HEADERNAME))}" data-field-type="{$HEADER_FIELD->getFieldDataType()}" nowrap>
-									<span class="value textOverflowEllipsis">
+								<td class="relatedListEntryValues" title="{strip_tags((isset($RELATED_RECORD->getDisplayValue($RELATED_HEADERNAME)))?$RELATED_RECORD->getDisplayValue($RELATED_HEADERNAME):"")}" data-field-type="{$HEADER_FIELD->getFieldDataType()}" nowrap>
+										<span class="value textOverflowEllipsis">
 										{if $RELATED_MODULE_NAME eq 'Documents' && $RELATED_HEADERNAME eq 'document_source'}
 											<center>{$RELATED_RECORD->get($RELATED_HEADERNAME)}</center>
 											{else}

@@ -15,20 +15,24 @@ require_once 'include/Webservices/Utils.php';
 global $adv_filter_options;
 global $mod_strings;
 
-$adv_filter_options = array("e" => "" . $mod_strings['equals'] . "",
-	"n" => "" . $mod_strings['not equal to'] . "",
-	"s" => "" . $mod_strings['starts with'] . "",
-	"ew" => "" . $mod_strings['ends with'] . "",
-	"c" => "" . $mod_strings['contains'] . "",
-	"k" => "" . $mod_strings['does not contain'] . "",
-	"l" => "" . $mod_strings['less than'] . "",
-	"g" => "" . $mod_strings['greater than'] . "",
-	"m" => "" . $mod_strings['less or equal'] . "",
-	"h" => "" . $mod_strings['greater or equal'] . "",
-	"b" => "" . $mod_strings['before'] . "",
-	"a" => "" . $mod_strings['after'] . "",
-	"bw" => "" . $mod_strings['between'] . "",
-);
+$adv_filter_options = array();
+
+if ($mod_strings) {
+	$adv_filter_options = array("e" => "" . $mod_strings['equals'] . "",
+		"n" => "" . $mod_strings['not equal to'] . "",
+		"s" => "" . $mod_strings['starts with'] . "",
+		"ew" => "" . $mod_strings['ends with'] . "",
+		"c" => "" . $mod_strings['contains'] . "",
+		"k" => "" . $mod_strings['does not contain'] . "",
+		"l" => "" . $mod_strings['less than'] . "",
+		"g" => "" . $mod_strings['greater than'] . "",
+		"m" => "" . $mod_strings['less or equal'] . "",
+		"h" => "" . $mod_strings['greater or equal'] . "",
+		"b" => "" . $mod_strings['before'] . "",
+		"a" => "" . $mod_strings['after'] . "",
+		"bw" => "" . $mod_strings['between'] . "",
+	);
+}
 
 class CustomView extends CRMEntity {
 
@@ -88,9 +92,9 @@ class CustomView extends CRMEntity {
 	 */
 	function getViewId($module) {
 		global $adb, $current_user;
-		$now_action = vtlib_purify($_REQUEST['action']);
+		$now_action = vtlib_purify(isset($_REQUEST['action']) ? $_REQUEST['action'] : '');
 		if(!$now_action) {
-			$now_action = vtlib_purify($_REQUEST['view']);
+			$now_action = vtlib_purify(isset($_REQUEST['view']) ? $_REQUEST['view'] : '');
 		}
 		if (empty($_REQUEST['viewname'])) {
 			if (isset($_SESSION['lvs'][$module]["viewname"]) && $_SESSION['lvs'][$module]["viewname"] != '') {
@@ -222,7 +226,7 @@ class CustomView extends CRMEntity {
 		$result = $adb->pquery($ssql, $sparams);
 		while ($cvrow = $adb->fetch_array($result)) {
 			if ($cvrow['viewname'] == 'All') {
-				$cvrow['viewname'] = $app_strings['COMBO_ALL'];
+				$cvrow['viewname'] = isset($app_strings['COMBO_ALL'])?$app_strings['COMBO_ALL']:'';
 			}
 
 			$option = '';
@@ -312,7 +316,7 @@ class CustomView extends CRMEntity {
 
 			$params = array($tab_ids, $block_ids);
 
-			if (count($profileList) > 0) {
+			if (php7_count($profileList) > 0) {
 				$sql.= "  and vtiger_profile2field.profileid in (" . generateQuestionMarks($profileList) . ")";
 				array_push($params, $profileList);
 			}
@@ -429,6 +433,7 @@ class CustomView extends CRMEntity {
 			$sSQL .= " inner join vtiger_customview on vtiger_customview.cvid = vtiger_cvcolumnlist.cvid";
 			$sSQL .= " where vtiger_customview.cvid =? order by vtiger_cvcolumnlist.columnindex";
 			$result = $adb->pquery($sSQL, array($cvid));
+			$columnlist = array();
 			while ($columnrow = $adb->fetch_array($result)) {
 				$columnlist[$columnrow['columnindex']] = $columnrow['columnname'];
 			}
@@ -471,7 +476,7 @@ class CustomView extends CRMEntity {
 
 			$params = array($tabid, $blockids);
 
-			if (count($profileList) > 0) {
+			if (php7_count($profileList) > 0) {
 				$sql.= " and vtiger_profile2field.profileid in (" . generateQuestionMarks($profileList) . ")";
 				array_push($params, $profileList);
 			}
@@ -503,7 +508,7 @@ class CustomView extends CRMEntity {
 			"thisfq","nextfq","yesterday","today","tomorrow",
 			"lastweek","thisweek","nextweek","lastmonth","thismonth",
 			"nextmonth","last7days","last14days","last30days","last60days","last90days",
-			"last120days","next30days","next60days","next90days","next120days",
+			"last120days","next7days","next14days","next30days","next60days","next90days","next120days",
 		);
 	}
 
@@ -540,6 +545,8 @@ class CustomView extends CRMEntity {
 			"last60days" => "" . $mod_strings['Last 60 Days'] . "",
 			"last90days" => "" . $mod_strings['Last 90 Days'] . "",
 			"last120days" => "" . $mod_strings['Last 120 Days'] . "",
+			"next7days" => "" . $mod_strings['Next 7 Days'] . "",
+			"next14days" => "" . $mod_strings['Next 14 Days'] . "",
 			"next30days" => "" . $mod_strings['Next 30 Days'] . "",
 			"next60days" => "" . $mod_strings['Next 60 Days'] . "",
 			"next90days" => "" . $mod_strings['Next 90 Days'] . "",
@@ -608,6 +615,9 @@ class CustomView extends CRMEntity {
 
 		$next7days = date("Y-m-d", mktime(0, 0, 0, date("m"), date("d") + 6, date("Y")));
 		$next7DaysDateTime = new DateTimeField($next7days . ' ' . date('H:i:s'));
+
+		$next14days = date("Y-m-d", mktime(0, 0, 0, date("m"), date("d") + 13, date("Y")));
+		$next14DaysDateTime = new DateTimeField($next14days . ' ' . date('H:i:s'));
 
 		$next30days = date("Y-m-d", mktime(0, 0, 0, date("m"), date("d") + 29, date("Y")));
 		$next30DaysDateTime = new DateTimeField($next30days . ' ' . date('H:i:s'));
@@ -768,7 +778,11 @@ class CustomView extends CRMEntity {
 					document.CustomView.startdate.value = "' . $todayDateTime->getDisplayDate() . '";
 					document.CustomView.enddate.value = "' . $next7DaysDateTime->getDisplayDate() . '";
 
-				} else if( type == "next30days" ) {
+				} else if( type == "next14days" ) {
+					document.CustomView.startdate.value = "' . $todayDateTime->getDisplayDate() . '";
+					document.CustomView.enddate.value = "' . $next14DaysDateTime->getDisplayDate() . '";
+
+				}else if( type == "next30days" ) {
 					document.CustomView.startdate.value = "' . $todayDateTime->getDisplayDate() . '";
 					document.CustomView.enddate.value = "' . $next30DaysDateTime->getDisplayDate() . '";
 
@@ -902,6 +916,8 @@ class CustomView extends CRMEntity {
 
 			$advft_criteria = Vtiger_Cache::get('advftCriteria',$cvid);
 			if(!$advft_criteria){
+				$advft_criteria = array();
+				
 				// Not a good approach to get all the fields if not required(May leads to Performance issue)
 				$sql = 'SELECT groupid,group_condition FROM vtiger_cvadvfilter_grouping WHERE cvid = ? ORDER BY groupid';
 				$groupsresult = $adb->pquery($sql, array($cvid));
@@ -934,7 +950,7 @@ class CustomView extends CRMEntity {
 
 					$advFilterColumn = $criteria['columnname'];
 					$advFilterComparator = $criteria['comparator'];
-					$advFilterColumnCondition = $criteria['column_condition'];
+					$advFilterColumnCondition = isset($criteria['column_condition'])? $criteria['column_condition'] : null;
 
 					$columnInfo = explode(":", $advFilterColumn);
 					$fieldName = $columnInfo[2];
@@ -942,7 +958,8 @@ class CustomView extends CRMEntity {
 					$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
 					preg_match('/(\w+) ; \((\w+)\) (\w+)/', $fieldName, $matches);
 
-					if (count($matches) != 0) {
+					$referenceParentField = null;
+					if (php7_count($matches) != 0) {
 						list($full, $referenceParentField, $referenceModule, $referenceFieldName) = $matches;
 					}
 					if ($referenceParentField) {
@@ -976,7 +993,7 @@ class CustomView extends CRMEntity {
 					$specialDateTimeConditions = Vtiger_Functions::getSpecialDateTimeCondtions();
 					if (($col[4] == 'D' || ($col[4] == 'T' && $col[1] != 'time_start' && $col[1] != 'time_end') || ($col[4] == 'DT')) && !in_array($criteria['comparator'], $specialDateTimeConditions)) {
 						$val = Array();
-						for ($x = 0; $x < count($temp_val); $x++) {
+						for ($x = 0; $x < php7_count($temp_val); $x++) {
 							if(empty($temp_val[$x])) {
 								$val[$x] = '';
 							} else if ($col[4] == 'D') {
@@ -1004,6 +1021,9 @@ class CustomView extends CRMEntity {
 							}
 						}
 						$advfilterval = implode(",", $val);
+					}
+					if(!is_array($criteria)) {
+						$criteria = [];
 					}
 					$criteria['value'] = $advfilterval;
 					$criteria['column_condition'] = $relcriteriarow["column_condition"];
@@ -1230,9 +1250,9 @@ class CustomView extends CRMEntity {
 				if ($columnname != "" && $comparator != "") {
 					$valuearray = explode(",", trim($value));
 
-					if (isset($valuearray) && count($valuearray) > 1 && $comparator != 'bw') {
+					if (isset($valuearray) && php7_count($valuearray) > 1 && $comparator != 'bw') {
 						$advorsql = "";
-						for ($n = 0; $n < count($valuearray); $n++) {
+						for ($n = 0; $n < php7_count($valuearray); $n++) {
 							$advorsql[] = $this->getRealValues($columns[0], $columns[1], $comparator, trim($valuearray[$n]), $datatype);
 						}
 						//If negative logic filter ('not equal to', 'does not contain') is used, 'and' condition should be applied instead of 'or'
@@ -1242,7 +1262,7 @@ class CustomView extends CRMEntity {
 							$advorsqls = implode(" or ", $advorsql);
 						$advfiltersql = " (" . $advorsqls . ") ";
 					}
-					elseif ($comparator == 'bw' && count($valuearray) == 2) {
+					elseif ($comparator == 'bw' && php7_count($valuearray) == 2) {
 						$advfiltersql = "(" . $columns[0] . "." . $columns[1] . " between '" . getValidDBInsertDateTimeValue(trim($valuearray[0]), $datatype) . "' and '" . getValidDBInsertDateTimeValue(trim($valuearray[1]), $datatype) . "')";
 					}
 					elseif ($comparator == 'y') {
@@ -1274,7 +1294,7 @@ class CustomView extends CRMEntity {
 					}
 
 					$advfiltergroupsql .= $advfiltersql;
-					if ($columncondition != NULL && $columncondition != '' && count($groupcolumns) > $columnindex) {
+					if ($columncondition != NULL && $columncondition != '' && php7_count($groupcolumns) > $columnindex) {
 						$advfiltergroupsql .= ' ' . $columncondition . ' ';
 					}
 				}
@@ -1638,6 +1658,7 @@ class CustomView extends CRMEntity {
 		$nextweek1 = date("Y-m-d", strtotime("+1 week $prvDay"));
 
 		$next7days = date("Y-m-d", mktime(0, 0, 0, $m, $d + 6, $y));
+		$next14days = date("Y-m-d", mktime(0, 0, 0, $m, $d + 13, $y));
 		$next30days = date("Y-m-d", mktime(0, 0, 0, $m, $d + 29, $y));
 		$next60days = date("Y-m-d", mktime(0, 0, 0, $m, $d + 59, $y));
 		$next90days = date("Y-m-d", mktime(0, 0, 0, $m, $d + 89, $y));
@@ -1727,6 +1748,10 @@ class CustomView extends CRMEntity {
 
 			$datevalue[0] = $today;
 			$datevalue[1] = $next7days;
+		} elseif ($type == "next14days") {
+
+			$datevalue[0] = $today;
+			$datevalue[1] = $next14days;
 		} elseif ($type == "next30days") {
 
 			$datevalue[0] = $today;
@@ -1933,7 +1958,7 @@ class CustomView extends CRMEntity {
 			if (trim($block_label) == '') {
 				$block_info[$pre_block_label] = $block_info[$pre_block_label] . "," . $block_result['block'];
 			} else {
-				$lan_block_label = $current_mod_strings[$block_label];
+				$lan_block_label = isset($current_mod_strings[$block_label])? $current_mod_strings[$block_label] : $block_label;
 				if (isset($block_info[$lan_block_label]) && $block_info[$lan_block_label] != '') {
 					$block_info[$lan_block_label] = $block_info[$lan_block_label] . "," . $block_result['block'];
 				} else {
@@ -2023,7 +2048,7 @@ class CustomView extends CRMEntity {
 								$temp_result[] = $row['id'];
 							}
 							$user_array = $temp_result;
-							if (sizeof($user_array) > 0) {
+							if (php7_sizeof($user_array) > 0) {
 								if (!in_array($current_user->id, $user_array))
 									$permission = "no";
 								else

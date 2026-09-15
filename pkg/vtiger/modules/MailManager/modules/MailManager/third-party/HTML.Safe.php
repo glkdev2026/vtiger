@@ -272,7 +272,7 @@ class HTML_Safe
         foreach ($this->blackProtocols as $proto) {
             $preg = "/[\s\x01-\x1F]*";
             for ($i=0; $i<strlen($proto); $i++) {
-                $preg .= $proto{$i} . "[\s\x01-\x1F]*";
+                $preg .= $proto[$i] . "[\s\x01-\x1F]*";
             }
             $preg .= ":/i";
             $this->protoRegexps[] = $preg;
@@ -351,9 +351,9 @@ class HTML_Safe
                     }
                 }
 
-                $tempval = preg_replace('/&#(\d+);?/me', "chr('\\1')", $value); //"'
+                $tempval = preg_replace('/&#(\d+);?/', "chr('\\1')", $value); //"'
                 $tempval = preg_replace(
-                    '/&#x([0-9a-f]+);?/mei',
+                    '/&#x([0-9a-f]+);?/i',
                     "chr(hexdec('\\1'))",
                     $tempval
                 );

@@ -11,6 +11,7 @@
 class Vtiger_Popup_View extends Vtiger_Footer_View {
 	protected $listViewEntries = false;
 	protected $listViewHeaders = false;
+	protected $listViewLinks = false;
 
 	public function requiresPermission(Vtiger_Request $request){
 		$permissions = parent::requiresPermission($request);
@@ -98,6 +99,7 @@ class Vtiger_Popup_View extends Vtiger_Footer_View {
 				$searchParams=$request->get('search_params');
 
 		$relationId = $request->get('relationId'); 
+		$label='';
 
 		//To handle special operation when selecting record from Popup
 		$getUrl = $request->get('get_url');
@@ -169,8 +171,27 @@ class Vtiger_Popup_View extends Vtiger_Footer_View {
 		if(!empty($relatedParentModule) && !empty($relatedParentId)) {
 			$this->listViewHeaders = $listViewModel->getHeaders();
 
+			$relatedModuleModel = Vtiger_Module_Model::getInstance($moduleName);
+			$moduleFields = $relatedModuleModel->getFields();
+			
+			if (empty($searchParams)) {
+				$searchParams = array();
+			}
+	
+			$whereCondition = array();
+			foreach ($searchParams as $fieldListGroup) {
+				foreach ($fieldListGroup as $fieldSearchInfo) {
+					$fieldModel = $moduleFields[$fieldSearchInfo[0]];
+					$tableName = Vtiger_Util_Helper::validateStringForSql($fieldModel->get('table'));
+					$column = Vtiger_Util_Helper::validateStringForSql($fieldModel->get('column'));
+					$whereCondition[$fieldSearchInfo[0]] = array($tableName.'.'.$column, $fieldSearchInfo[1], $fieldSearchInfo[2]);
+				}
+			}
+			if (!empty($whereCondition))
+				$listViewModel->set('whereCondition', $whereCondition);
+
 			$models = $listViewModel->getEntries($pagingModel);
-			$noOfEntries = count($models);
+			$noOfEntries = php7_count($models);
 			foreach ($models as $recordId => $recordModel) {
 				foreach ($this->listViewHeaders as $fieldName => $fieldModel) {
 					$recordModel->set($fieldName, $recordModel->getDisplayValue($fieldName));
@@ -178,7 +199,7 @@ class Vtiger_Popup_View extends Vtiger_Footer_View {
 				$models[$recordId] = $recordModel;
 			}
 			$this->listViewEntries = $models;
-			if(count($this->listViewEntries) > 0 ){
+			if(php7_count($this->listViewEntries) > 0 ){
 				$parent_related_records = true;
 			}
 		}else{
@@ -187,7 +208,8 @@ class Vtiger_Popup_View extends Vtiger_Footer_View {
 		}
 
 		// If there are no related records with parent module then, we should show all the records
-		if(!$parent_related_records && !empty($relatedParentModule) && !empty($relatedParentId)){
+		if((!isset($parent_related_records) || !$parent_related_records) && 
+			!empty($relatedParentModule) && !empty($relatedParentId)){
 			$relatedParentModule = null;
 			$relatedParentId = null;
 			$listViewModel = Vtiger_ListView_Model::getInstanceForPopup($moduleName);
@@ -227,7 +249,7 @@ class Vtiger_Popup_View extends Vtiger_Footer_View {
 					}
 		}
 
-		$noOfEntries = count($this->listViewEntries);
+		$noOfEntries = php7_count($this->listViewEntries);
 
 		if(empty($sortOrder)){
 			$sortOrder = "ASC";

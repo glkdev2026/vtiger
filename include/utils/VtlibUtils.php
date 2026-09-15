@@ -103,8 +103,8 @@ function vtlib_isModuleActive($module) {
 
 	if(!isset($__cache_module_activeinfo[$module])) {
 		include 'tabdata.php';
-		$tabId = $tab_info_array[$module];
-		$presence = $tab_seq_array[$tabId];
+		$tabId = vtlib_array($tab_info_array)[$module];
+		$presence = vtlib_array($tab_seq_array)[$tabId];
 		$__cache_module_activeinfo[$module] = $presence;
 	} else {
 		$presence = $__cache_module_activeinfo[$module];
@@ -145,10 +145,16 @@ function vtlib_moduleAlwaysActive() {
  * Toggle the module (enable/disable)
  */
 function vtlib_toggleModuleAccess($modules, $enable_disable) {
-	global $adb, $__cache_module_activeinfo;
-
+	global $adb, $__cache_module_activeinfo, $current_user;
+	
 	include_once('vtlib/Vtiger/Module.php');
-
+	
+	// Checks if the user is admin or not
+	$isAdmin = is_admin($current_user);
+	if(!$isAdmin) {
+		throw new AppException('Permission denied! Only admin users can toggle modules');
+	}
+	
 	if(is_string($modules)) $modules = array($modules);
 	$event_type = false;
 
@@ -158,8 +164,8 @@ function vtlib_toggleModuleAccess($modules, $enable_disable) {
 	} else if($enable_disable === false) {
 		$enable_disable = 1;
 		$event_type = Vtiger_Module::EVENT_MODULE_DISABLED;
-        //Update default landing page to dashboard if module is disabled.
-        $adb->pquery('UPDATE vtiger_users SET defaultlandingpage = ? WHERE defaultlandingpage IN(' . generateQuestionMarks($modules) . ')', array_merge(array('Home'), $modules));
+		//Update default landing page to dashboard if module is disabled.
+		$adb->pquery('UPDATE vtiger_users SET defaultlandingpage = ? WHERE defaultlandingpage IN(' . generateQuestionMarks($modules) . ')', array_merge(array('Home'), $modules));
 	}
 
 	$checkResult = $adb->pquery('SELECT name FROM vtiger_tab WHERE name IN ('. generateQuestionMarks($modules) .')', array($modules));
@@ -504,7 +510,7 @@ function __vtlib_get_modulevar_value($module, $varname) {
 			return '';
 		}
 		$focus = CRMEntity::getInstance($module);
-		$customFieldTable = $focus->customFieldTable;
+		$customFieldTable = isset($focus->customFieldTable) ? $focus->customFieldTable: null;
 		if (!empty($customFieldTable)) {
 			$returnValue = array();
 			$returnValue['related_tables'][$customFieldTable[0]] = array($customFieldTable[1], $focus->table_name, $focus->table_index);
@@ -666,7 +672,7 @@ function vtlib_purify($input, $ignore = false) {
     $value = $input;
 
     if (!is_array($input)) {
-        $md5OfInput = md5($input);
+        $md5OfInput = md5($input ? $input : "");
         if (array_key_exists($md5OfInput, $purified_cache)) {
             $value = $purified_cache[$md5OfInput];
             //to escape cleaning up again
@@ -675,7 +681,6 @@ function vtlib_purify($input, $ignore = false) {
     }
     $use_charset = $default_charset;
     $use_root_directory = $root_directory;
-
 
     if (!$ignore) {
         // Initialize the instance if it has not yet done
@@ -695,14 +700,13 @@ function vtlib_purify($input, $ignore = false) {
                 'data' => true
             );
 
-            include_once __DIR__ . '/../../libraries/htmlpurifier410/library/HTMLPurifier.auto.php';
-
             $config = HTMLPurifier_Config::createDefault();
             $config->set('Core.Encoding', $use_charset);
             $config->set('Cache.SerializerPath', "$use_root_directory/test/vtlib");
             $config->set('CSS.AllowTricky', true);
             $config->set('URI.AllowedSchemes', $allowedSchemes);
             $config->set('Attr.EnableID', true);
+            $config->set('HTML.TargetBlank', true);
 
             $__htmlpurifier_instance = new HTMLPurifier($config);
         }
@@ -718,46 +722,174 @@ function vtlib_purify($input, $ignore = false) {
                 $value = purifyHtmlEventAttributes($value, true);
             }
         }
-        $purified_cache[$md5OfInput] = $value;
+		if (isset($md5OfInput)) {
+			$purified_cache[$md5OfInput] = $value;
+		}
     }
-    $value = str_replace('&amp;', '&', $value);
+    
+    if(is_array($value)) {
+        $value = str_replace_json('&amp;', '&', $value);
+    } else {
+        $value = str_replace('&amp;', '&', $value);
+    }
     return $value;
 }
+
+/**
+ * Remove content within quotes (single/double/unbalanced)
+ * Helpful to keep away quote-injection xss attacks in the templates.
+ */
+function vtlib_strip_quoted($input) {
+    if (is_null($input)) return $input;
+
+    $output = $input;
+    /*
+     * Discard anything in "double quoted until'you find next double quote"
+     * or discard anything in 'single quoted until "you" find next single quote"
+     */
+    $qchar = '"';
+    $idx = strpos($input, $qchar);
+    if ($idx === false) { // no double-quote, find single-quote
+        $qchar = "'";
+        $idx = strpos($input, $qchar);
+    }
+    if ($idx !== false) {
+        $output = substr($input,0, $idx);
+        $idx = strpos($input, $qchar, $idx+1);
+        if ($idx === false) {
+            // unbalanced - eat all.
+            $idx = strlen($input)-1;
+        }
+        $input = substr($input, $idx+1);
+        $output .= vtlib_strip_quoted($input);
+    }
+    return $output;
+}
+
+/**
+ * Function to replace values in multi dimentional array (str_replace will support only one level of array)
+ * @param type $search
+ * @param type $replace
+ * @param type $subject
+ * @return <array>
+ */
+function str_replace_json($search, $replace, $subject){
+    return json_decode(str_replace($search, $replace,  json_encode($subject)), true);
+}
+
+/**
+ * Case-insensitive comparision of string ignore accents.
+ * @param string $lv - left
+ * @param string $rv - right
+ * @return stcasecmp ascii comparision
+ */
+function strcasecmp_accents($lv, $rv) {
+    $lvenc = mb_detect_encoding($lv);
+    $rvenc = mb_detect_encoding($rv);
+    if ($lvenc != $rvenc) {
+        if ($lvenc != "ASCII") $lv = iconv($lvenc, "ASCII//TRANSLIT", $lv);
+        if ($rvenc != "ASCII") $rv = iconv($rvenc, "ASCII//TRANSLIT", $rv);
+    }
+    return strcasecmp($lv, $rv);
+}
+
+/**
+ * Callback function to use based on available environment support.
+ */
+function strcasecmp_accents_callback() {
+    // when mb & iconv is available - set the locale and return accents netural comparision
+    // otherwise return standard strcasecmp
+    if (function_exists('mb_detect_encoding') && function_exists('iconv')) {
+        setlocale(LC_CTYPE, "en_US.utf8"); // required to make iconv (UTF-8 to ASCII/TRANSLIT)
+        $callback = "strcasecmp_accents";
+    } else {
+        $callback = "strcasecmp";
+    }
+    return $callback;
+}
+
 
 /**
  * To purify malicious html event attributes
  * @param <String> $value
  * @return <String>
  */
-function purifyHtmlEventAttributes($value, $replaceAll = false) {
-    $htmlEventAttributes = "onerror|onblur|onchange|oncontextmenu|onfocus|oninput|oninvalid|onresize|onauxclick|oncancel|oncanplay|oncanplaythrough|" .
-            "onreset|onsearch|onselect|onsubmit|onkeydown|onkeypress|onkeyup|onclose|oncuechange|ondurationchange|onemptied|onended|" .
-            "onclick|ondblclick|ondrag|ondragend|ondragenter|ondragleave|ondragover|ondragexit|onformdata|onloadeddata|onloadedmetadata|" .
-            "ondragstart|ondrop|onmousedown|onmousemove|onmouseout|onmouseover|onmouseenter|onmouseleave|onpause|onplay|onplaying|" .
-            "onmouseup|onmousewheel|onscroll|onwheel|oncopy|oncut|onpaste|onload|onprogress|onratechange|onsecuritypolicyviolation|" .
-            "onselectionchange|onabort|onselectstart|onstart|onfinish|onloadstart|onshow|onreadystatechange|onseeked|onslotchange|" .
-            "onseeking|onstalled|onsubmit|onsuspend|ontimeupdate|ontoggle|onvolumechange|onwaiting|onwebkitanimationend|onstorage|" .
-            "onwebkitanimationiteration|onwebkitanimationstart|onwebkittransitionend|onafterprint|onbeforeprint|onbeforeunload|" .
-            "onhashchange|onlanguagechange|onmessage|onmessageerror|onoffline|ononline|onpagehide|onpageshow|onpopstate|onunload" .
-            "onrejectionhandled|onunhandledrejection|onloadend";
-
+function purifyHtmlEventAttributes($value,$replaceAll = false){
+	if (!$value) return $value;
+	
+	$tmp_markers = $office365ImageMarkers =  array();
+	$value = Vtiger_Functions::strip_base64_data($value,true,$tmp_markers);	
+	$value = Vtiger_Functions::stripInlineOffice365Image($value,true,$office365ImageMarkers);		
+	$tmp_markers = array_merge($tmp_markers, $office365ImageMarkers);
     // remove malicious html attributes with its value.
+	$pattern='/\b(alert|on\w+)\s*\([^)]*\)|\s*(?:on\w+)=(".*?"|\'.*?\'|[^\'">\s]+)\s*/';
     if ($replaceAll) {
-        $regex = '\s*[=&%#]\s*(?:"[^"]*"[\'"]*|\'[^\']*\'[\'"]*|[^]*[\s\/>])*/i';
-        $value = preg_replace("/\s*(" . $htmlEventAttributes . ")" . $regex, '', $value);
-
-        /**
-         * If anchor tag having 'javascript:' string then remove the tag contents.
-         * Right now, we fixed this for anchor tag as we don't see any other such things right now.  
-         * All other event attributes are already handled above. Need to update this if any thing new found
-         */
-        $javaScriptRegex = '/<a [^>]*(j[\s]?a[\s]?v[\s]?a[\s]?s[\s]?c[\s]?r[\s]?i[\s]?p[\s]?t[\s]*[=&%#:])[^>]*?>/i';
-        $value = preg_replace($javaScriptRegex, '<a>', $value);
+        $value = preg_replace($pattern, '', $value);
+        //remove script tag with contents
+        $value = purifyScript($value);
+        //purify javascript alert from the tag contents
+        $value = purifyJavascriptAlert($value);
+	
     } else {
-        if (preg_match("/\s*(" . $htmlEventAttributes . ")\s*=/i", $value)) {
+        if (preg_match($pattern, $value)) {
             $value = str_replace("=", "&equals;", $value);
         }
     }
+
+    //Replace any strip-markers
+	if ($tmp_markers){
+		$keys = array();
+		$values = array();
+		foreach ($tmp_markers as $k => $v){
+			$keys[] = $k;
+			$values[] = $v;
+		}
+		$value = str_replace($keys, $values, $value);
+	}
+	
+    return $value;
+}
+
+//function to remove script tag and its contents
+function purifyScript($value){
+    $scriptRegex = '/(&.*?lt;|<)script[\w\W]*?(>|&.*?gt;)[\w\W]*?(&.*?lt;|<)\/script(>|&.*?gt;|\s)/i';
+    $value = preg_replace($scriptRegex,'',$value);
+    return $value;
+}
+
+
+
+//function to purify html tag having 'javascript:' string by removing the tag contents.
+function purifyJavascriptAlert($value){
+    $restrictJavascriptInTags = array('a','iframe','object','embed','animate','set','base','button','input','form');
+    
+    foreach($restrictJavascriptInTags as $tag){
+        
+        if(!empty($value)){
+            $originalValue = $value;
+        }
+        
+        // skip javascript: contents check if tag is not available,as javascript: regex will cause performace issue if the contents will be large 
+        if (preg_match_all('/(&.*?lt;|<)'.$tag.'[^>]*?(>|&.*?gt;)/i', $value,$matches)) {
+            $javaScriptRegex = '/(&.*?lt;|<).?'.$tag.'[^>]*(j[\s]?a[\s]?v[\s]?a[\s]?s[\s]?c[\s]?r[\s]?i[\s]?p[\s]?t[\s]*[=&%#:])[^>]*?(>|&.*?gt;)/i';
+            foreach($matches[0] as $matchedValue){
+                //strict check addded - if &tab;/&newLine added in the above tags we are replacing it to spaces.
+                $purifyContent = preg_replace('/&NewLine;|&amp;NewLine;|&Tab;|&amp;Tab;|\t/i',' ',decode_html($matchedValue));
+                $purifyContent = preg_replace($javaScriptRegex,"<$tag>",$purifyContent);
+                $value = str_replace($matchedValue, $purifyContent, $value);
+                
+                /*
+                * if the content length will more. In that case, preg_replace will fail and return Null due to PREG_BACKTRACK_LIMIT_ERROR error
+                * so skipping the validation and reseting the value - TODO
+                */
+               if (preg_last_error() == PREG_BACKTRACK_LIMIT_ERROR) {
+                   $value = $originalValue;
+                   return $value;
+               }
+            }        
+        }
+    }
+
     return $value;
 }
 
@@ -855,13 +987,21 @@ function vtlib_addSettingsLink($linkName, $linkURL, $blockName = false) {
 				$linkURL = ($linkURL) ? $linkURL : '';
 				$fieldSequence = $db->query_result($fieldSeqResult, 0, 'sequence');
 
-				$db->pquery('INSERT INTO vtiger_settings_field(fieldid, blockid, name, iconpath, description, linkto, sequence, active, pinned) VALUES(?,?,?,?,?,?,?,?,?)', array($fieldId, $blockId, $entryName, '', $entryName, $linkURL, $fieldSequence++, 0, 0));
+				$db->pquery('INSERT INTO vtiger_settings_field(fieldid, blockid, name, iconpath, description, linkto, sequence, active, pinned) VALUES(?,?,?,?,?,?,?,?,?)', array($fieldId, $blockId, $linkName, '', $linkName, $linkURL, $fieldSequence++, 0, 0));
 			}
 		} else {
 			$success = false;
 		}
 	}
 	return $success;
+}
+
+/**
+ * PHP Strict helpers.
+ */
+require_once __DIR__ . "/../../vtlib/Vtiger/Utils/GuardedArray.php"; /* absolute path used to overcome need of chdir in subpaths */
+function vtlib_array($data = null) {
+	return new Vtiger_GuardedArray($data);
 }
 
 /**
@@ -883,4 +1023,35 @@ function php7_compat_ereg($pattern, $str, $ignore_case=false) {
 
 if (!function_exists('ereg')) { function ereg($pattern, $str) { return php7_compat_ereg($pattern, $str); } }
 if (!function_exists('eregi')) { function eregi($pattern, $str) { return php7_compat_ereg($pattern, $str, true); } }
-?>
+
+/**
+ * PHP8 support
+ */
+if (!function_exists('get_magic_quotes_gpc')) {
+	function get_magic_quotes_gpc() {
+		return false;
+	}
+}
+
+function php7_count($value) {
+	// PHP 8.x does not allow count(null) or count(string)
+	if (is_null($value)) return 0;
+	if (!is_array($value)) return 1;
+	return count($value);
+}
+
+function php7_sizeof($value) {
+	// PHP 8.x does not allow sizeof(null)
+	return php7_count($value);
+}
+
+function php7_trim($str) {
+	// PHP 8.x marks as deprecated
+	return $str == null ? $str : trim($str);
+}
+
+function php7_htmlentities($str) {
+	// PHP 8.x marks as deprecated
+	return $str == null ? $str : htmlentities($str);
+}
+

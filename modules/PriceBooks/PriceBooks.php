@@ -451,7 +451,9 @@ class PriceBooks extends CRMEntity {
 		unset($fieldData['listprice']); unset($fieldData['relatedto']);
 		$fieldData = $obj->transformForImport($fieldData, $moduleMeta);
 		try{
+			$fieldData['source'] = $obj->recordSource;
 			$entityInfo = vtws_create($moduleName, $fieldData, $obj->user);
+			$this->updateMissingSeqNumber($moduleName);
 			if($entityInfo && $productList){
 				$this->relatePriceBookWithProduct($entityInfo, $productList);
 			}
@@ -462,7 +464,7 @@ class PriceBooks extends CRMEntity {
 	}
 
 	function relatePriceBookWithProduct($entityinfo, $productList) {
-		if(count($productList) > 0){
+		if(php7_count($productList) > 0){
 			foreach($productList as $product){
 				if(!$product['relatedto'])
 					continue;

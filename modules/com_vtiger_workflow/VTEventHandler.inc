@@ -31,6 +31,7 @@ require_once('VTWorkflowUtils.php');
  */
 
 class VTWorkflowEventHandler extends VTEventHandler {
+	var $workflows;
 
 	/**
 	 * Push tasks to the task queue if the conditions are true
@@ -56,7 +57,7 @@ class VTWorkflowEventHandler extends VTEventHandler {
 		 * workflows are intialised from ModCommentsHandler.php
 		 * While adding a comment on any record which are supporting Comments ModCommentsHandler will trigger
 		 */
-		if (!is_array($this->workflows)) {
+		if (!isset($this->workflows) || !is_array($this->workflows)) {
 			$wfs = new VTWorkflowManager($adb);
 			$this->workflows = $wfs->getWorkflowsForModule($entityData->getModuleName());
 		}

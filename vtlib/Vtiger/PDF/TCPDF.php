@@ -7,8 +7,6 @@
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
  ************************************************************************************/
-require_once 'libraries/tcpdf/config/lang/eng.php';
-require_once 'libraries/tcpdf/tcpdf.php';
 
 class Vtiger_PDF_TCPDF extends TCPDF {
 
@@ -28,7 +26,7 @@ class Vtiger_PDF_TCPDF extends TCPDF {
 		$this->FontFamily = $family;
 	}
 
-	function GetStringHeight($sa,$w) {
+	function GetStringHeight($sa,$w,$reseth = false, $autopadding = true, $cellpadding = NULL, $border = 0) {
 		if(empty($sa)) return 0;
 		
 		$sa = str_replace("\r","",$sa);
@@ -37,7 +35,7 @@ class Vtiger_PDF_TCPDF extends TCPDF {
 		$sa = substr($sa,0,-1);
 
 		$blocks = explode("\n",$sa);
-		$wmax = $w - (2 * $this->cMargin);
+		$wmax = $w - (2 * isset($this->cMargin) ? $this->cMargin : 0);
 
 		$lines = 0;
 		$spacesize = $this->GetCharWidth(32);
@@ -46,7 +44,7 @@ class Vtiger_PDF_TCPDF extends TCPDF {
 				$words = explode(" ",$block);
 
 				$cw = 0;
-				for ($i = 0;$i < count($words);$i++) {
+				for ($i = 0;$i < php7_count($words);$i++) {
 					if ($i != 0) $cw += $spacesize;
 
 					$wordwidth = $this->GetStringWidth($words[$i]);
@@ -65,7 +63,7 @@ class Vtiger_PDF_TCPDF extends TCPDF {
 		return ($lines * ($this->FontSize * $this->cell_height_ratio)) + 2;
 	}
 
-	function SetFont($family, $style='', $size='') {
+	function SetFont($family, $style='', $size=0, $fontfile='', $subset = 'default', $out = true) {
 		if($family == '') {
 			$family = $this->FontFamily;
 		}
@@ -79,6 +77,15 @@ class Vtiger_PDF_TCPDF extends TCPDF {
 		$this->FontStyle = $fontdata['style'];
 		$this->CurrentFont = &$this->fonts[$fontdata['fontkey']];
 		$this->SetFontSize($size);
+	}
+
+	public function Output($name='doc.pdf', $dest='I') {
+		/* Enforce local-file scheme if not specified */
+		if (strpos($name, "://") === false) {
+			global $root_directory;
+			$name = "file://". $root_directory . "/" . $name;
+		}
+		return parent::Output($name, $dest);
 	}
 }
 ?>

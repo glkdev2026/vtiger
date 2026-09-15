@@ -112,7 +112,7 @@ class PurchaseOrder extends CRMEntity {
 		$updateInventoryProductRel_deduct_stock = false;
 
 		$requestProductIdsList = $requestQuantitiesList = array();
-		$totalNoOfProducts = $_REQUEST['totalProductCount'];
+		$totalNoOfProducts = isset($_REQUEST['totalProductCount']) ? $_REQUEST['totalProductCount'] : '';
 		for($i=1; $i<=$totalNoOfProducts; $i++) {
 			$productId = $_REQUEST['hdnProductId'.$i];
 			$requestProductIdsList[$productId] = $productId;
@@ -247,7 +247,7 @@ class PurchaseOrder extends CRMEntity {
 		if (isset($_REQUEST['REQUEST_FROM_WS']) && $_REQUEST['REQUEST_FROM_WS']) {
 			unset($_REQUEST['totalProductCount']);
 		}
-
+		$_REQUEST['ajxaction']=isset($_REQUEST['ajxaction']) ? $_REQUEST['ajxaction'] : '';
 		//in ajax save we should not call this function, because this will delete all the existing product values
 		if($_REQUEST['action'] != 'PurchaseOrderAjax' && $_REQUEST['ajxaction'] != 'DETAILVIEW'
 				&& $_REQUEST['action'] != 'MassEditSave' && $_REQUEST['action'] != 'ProcessDuplicates'
@@ -514,27 +514,27 @@ class PurchaseOrder extends CRMEntity {
 
 	// Function to unlink an entity with given Id from another entity
 	function unlinkRelationship($id, $return_module, $return_id) {
-		global $log;
-		if(empty($return_module) || empty($return_id)) return;
+            global $log;
+            if (empty($return_module) || empty($return_id)) return;
 
-		if($return_module == 'Vendors') {
-			$sql_req ='UPDATE vtiger_crmentity SET deleted = 1 WHERE crmid= ?';
-			$this->db->pquery($sql_req, array($id));
-		} elseif($return_module == 'Contacts') {
-			$sql_req ='UPDATE vtiger_purchaseorder SET contactid=? WHERE purchaseorderid = ?';
-			$this->db->pquery($sql_req, array(null, $id));
-		} elseif($return_module == 'Documents') {
-            $sql = 'DELETE FROM vtiger_senotesrel WHERE crmid=? AND notesid=?';
-            $this->db->pquery($sql, array($id, $return_id));
-		} elseif($return_module == 'Accounts') {
-			$sql ='UPDATE vtiger_purchaseorder SET accountid=? WHERE purchaseorderid=?';
-			$this->db->pquery($sql, array(null, $id));
-		} else {
-			parent::unlinkRelationship($id, $return_module, $return_id);
-		}
-	}
+            if ($return_module == 'Vendors') {
+                $sql_req = 'UPDATE vtiger_purchaseorder SET vendorid = ? WHERE purchaseorderid = ?';
+                $this->db->pquery($sql_req, array(null, $id));
+            } elseif ($return_module == 'Contacts') {
+                $sql_req = 'UPDATE vtiger_purchaseorder SET contactid=? WHERE purchaseorderid = ?';
+                $this->db->pquery($sql_req, array(null, $id));
+            } elseif ($return_module == 'Documents') {
+                $sql = 'DELETE FROM vtiger_senotesrel WHERE crmid=? AND notesid=?';
+                $this->db->pquery($sql, array($id, $return_id));
+            } elseif ($return_module == 'Accounts') {
+                $sql = 'UPDATE vtiger_purchaseorder SET accountid = ? WHERE purchaseorderid = ?';
+                $this->db->pquery($sql, array(null, $id));
+            } else {
+                parent::unlinkRelationship($id, $return_module, $return_id);
+            }
+    }
 
-	function insertIntoEntityTable($table_name, $module, $fileid = '')  {
+    function insertIntoEntityTable($table_name, $module, $fileid = '')  {
 		//Ignore relation table insertions while saving of the record
 		if($table_name == 'vtiger_inventoryproductrel') {
 			return;

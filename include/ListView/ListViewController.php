@@ -67,9 +67,9 @@ class ListViewController {
 		$rowCount = $this->db->num_rows($result);
 
 		$columnName = $field->getColumnName();
-		if($field->referenceFieldName) {
+		if(isset($field->referenceFieldName) && $field->referenceFieldName) {
 			preg_match('/(\w+) ; \((\w+)\) (\w+)/', $field->referenceFieldName, $matches);
-			if (count($matches) != 0) {
+			if (php7_count($matches) != 0) {
 				list($full, $parentReferenceFieldName, $referenceModule, $referenceFieldName) = $matches;
 			}
 			$columnName = $parentReferenceFieldName.$referenceFieldName;
@@ -84,10 +84,10 @@ class ListViewController {
 		}
 
 		$idList = array_keys($idList);
-		if(count($idList) == 0) {
+		if(php7_count($idList) == 0) {
 			return;
 		}
-		if($parentReferenceFieldName) {
+		if(isset($parentReferenceFieldName) && $parentReferenceFieldName) {
 			$moduleList = $referenceFieldInfoList[$field->referenceFieldName];
 		} else {
 			$moduleList = $referenceFieldInfoList[$fieldName];
@@ -127,7 +127,7 @@ class ListViewController {
 		$fields = $this->queryGenerator->getFields(); 
 		$headerFields = array();
 		foreach($fields as $fieldName) {
-			if(array_key_exists($fieldName, $moduleFields)) {
+			if(is_array($moduleFields) && array_key_exists($fieldName, $moduleFields)) {
 				$headerFields[$fieldName] = $moduleFields[$fieldName];
 			}
 		}
@@ -142,7 +142,7 @@ class ListViewController {
 		$meta = $this->queryGenerator->getMeta($this->queryGenerator->getModule());
 		$baseModule = $module;
 		$moduleFields = $this->queryGenerator->getModuleFields();
-		$accessibleFieldList = array_keys($moduleFields);
+		$accessibleFieldList = is_array($moduleFields) ? array_keys($moduleFields) : array();
 		$listViewFields = array_intersect($fields, $accessibleFieldList);
 
 		$referenceFieldList = $this->queryGenerator->getReferenceFieldList();
@@ -166,7 +166,7 @@ class ListViewController {
 
 				//if the assigned to is related to the reference field
 				preg_match('/(\w+) ; \((\w+)\) (\w+)/', $fieldName, $matches);
-				if(count($matches) > 0) {
+				if(php7_count($matches) > 0) {
 					list($full, $referenceParentField, $module, $fieldName) = $matches;
 					$columnName = strtolower($referenceParentField.$fieldName);
 				} else {
@@ -179,8 +179,8 @@ class ListViewController {
 						$idList[] = $id;
 					}
 				}
-				if(count($idList) > 0) {
-					if(!is_array($this->ownerNameList[$fieldName])) {
+				if(php7_count($idList) > 0) {
+					if(isset($this->onwerNameList[$fieldName]) && !is_array($this->ownerNameList[$fieldName])) {
 						$this->ownerNameList[$fieldName] = getOwnerNameList($idList);
 					} else {
 						//array_merge API loses key information so need to merge the arrays
@@ -208,7 +208,7 @@ class ListViewController {
 		//performance optimization for uitype 61
 		$attachmentsCache = array();
 		$attachmentIds = array();
-		if(count($fileTypeFields)) {
+		if(php7_count($fileTypeFields)) {
 			foreach($fileTypeFields as $fileTypeField) {
 				for ($i = 0; $i < $rowCount; ++$i) {
 					$attachmentId = $db->query_result($result,$i,$fileTypeField);
@@ -216,7 +216,7 @@ class ListViewController {
 				}
 			}
 		}
-		if(count($attachmentIds)) {
+		if(php7_count($attachmentIds)) {
 			$getAttachmentsNamesSql = 'SELECT attachmentsid,name FROM vtiger_attachments WHERE attachmentsid IN (' . generateQuestionMarks($attachmentIds) . ')';
 			$attachmentNamesRes = $db->pquery($getAttachmentsNamesSql,$attachmentIds);
 			$attachmentNamesRowCount = $db->num_rows($attachmentNamesRes);
@@ -228,10 +228,15 @@ class ListViewController {
 		}
 
 		$moduleInstance = Vtiger_Module_Model::getInstance("PBXManager");
+                $outgoingCallPermission = false;
 		if($moduleInstance && $moduleInstance->isActive()) {
 			$outgoingCallPermission = PBXManager_Server_Model::checkPermissionForOutgoingCall();
 			$clickToCallLabel = vtranslate("LBL_CLICK_TO_CALL");
 		}
+
+		$emailModuleInstance = Vtiger_Module_Model::getInstance("Emails");
+		//checking the email module is active.
+		$isEmailModuleActive = $emailModuleInstance ? $emailModuleInstance->isActive() : false;
 
 		$data = array();
 		for ($i = 0; $i < $rowCount; ++$i) {
@@ -255,7 +260,7 @@ class ListViewController {
 				$fieldDataType = $field->getFieldDataType();
 				// for reference fields read the value differently
 				preg_match('/(\w+) ; \((\w+)\) (\w+)/', $fieldName, $matches);
-				if(count($matches) > 0) {
+				if(php7_count($matches) > 0) {
 					list($full, $referenceParentField, $module, $fieldName) = $matches;
 					$matches = null;
 					$rawValue = $this->db->query_result($result, $i, strtolower($referenceParentField.$fieldName));
@@ -268,7 +273,7 @@ class ListViewController {
 				}
 
 				if(in_array($uitype,array(15,33,16))){
-					$value = html_entity_decode($rawValue,ENT_QUOTES,$default_charset); 
+					$value = isset($rawValue) ? html_entity_decode($rawValue,ENT_QUOTES,$default_charset) : ''; 
 				} else { 
 					$value = $rawValue; 
 				}
@@ -300,7 +305,6 @@ class ListViewController {
 					} else{
 						$value = textlength_check($value);
 					}
-					$value = $fileicon.$value;
 				} elseif($module == 'Documents' && $fieldName == 'filesize') {
 					$downloadType = $db->query_result($result,$i,'filelocationtype');
 					if($downloadType == 'I') {
@@ -412,7 +416,8 @@ class ListViewController {
 					}
 				} elseif ($fieldDataType == 'email') {
 					global $current_user;
-					if($current_user->internal_mailer == 1){
+					// checking email module is active and internal mail composer is on
+					if($isEmailModuleActive && $current_user->internal_mailer == 1){
 						//check added for email link in user detailview
 						$value = "<a class='emailField' data-rawvalue=\"$rawValue\" onclick=\"Vtiger_Helper_Js.getInternalMailer($recordId,".
 						"'$fieldName','$module');\">".textlength_check($value)."</a>";
@@ -456,10 +461,10 @@ class ListViewController {
 				} elseif($field->getFieldDataType() == 'reference') {
 					$referenceFieldInfoList = $this->queryGenerator->getReferenceFieldInfoList();
 					$moduleList = $referenceFieldInfoList[$fieldName];
-					if(count($moduleList) == 1) {
+					if(php7_count($moduleList) == 1) {
 						$parentModule = $moduleList[0];
 					} else {
-						$parentModule = $this->typeList[$value];
+						$parentModule = isset($this->typeList[$value]) ? $this->typeList[$value] : '';
 					}
 					if(!empty($value) && !empty($this->nameList[$fieldName]) && !empty($parentModule)) {
 						$parentMeta = $this->queryGenerator->getMeta($parentModule);
@@ -491,7 +496,7 @@ class ListViewController {
 					}
 				} elseif ( in_array($uitype,array(7,9,90)) ) {
 					$value = "<span align='right'>".textlength_check($value)."</span>";
-				} elseif($field && $field->isNameField) {
+				} elseif($field && isset($field->isNameField) && $field->isNameField) {
 					$value = "<a href='?module=$field->moduleName&view=Detail&".
 								"record=$recordId' title='".vtranslate($field->moduleName, $field->moduleName)."'>$value</a>";
 				} elseif($field->getUIType() == 61) {

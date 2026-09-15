@@ -88,10 +88,11 @@ if (defined('VTIGER_UPGRADE')) {
             continue;
         }
         $moduleClass = CRMEntity::getInstance($moduleModel->getName());
-        $baseTableId = $moduleClass->table_index;
+        $baseTableId = isset($moduleClass->table_index)? $moduleClass->table_index : null;
         if ($baseTableId) {
             $baseTableName = $moduleClass->table_name;
-            $customTable = $moduleClass->customFieldTable;
+            $customTable = isset($moduleClass->customFieldTable)? $moduleClass->customFieldTable : null;
+			if (!$customTable) continue;
             $customTableName = $customTable[0];
             $customTableId = $customTable[1];
             $customTableColumns = $db->getColumnNames($customTableName);
@@ -155,7 +156,8 @@ if (defined('VTIGER_UPGRADE')) {
 	$packageModules = array('Project', 'ProjectTask', 'ProjectMilestone'); /* Projects zip is bundle */
 	$packageZips = glob("packages/vtiger/*/*.zip");
 	foreach ($packageZips as $zipfile) {
-		$packageModules[] = str_replace('.zip', '', array_pop(explode("/", $zipfile)));
+		$parts = explode("/", $zipfile);
+		$packageModules[] = str_replace('.zip', '', array_pop($parts));
 	}
 
 	$db->pquery('UPDATE vtiger_tab SET source="custom" WHERE version IS NOT NULL AND name NOT IN ('.generateQuestionMarks($packageModules).')', $packageModules);
@@ -374,7 +376,7 @@ if (defined('VTIGER_UPGRADE')) {
 			if (!array_key_exists($columnName, $updatedColumnsList)) {
 				if (preg_match('/vtiger_crmentity:createdtime:(\w*\:)*T/', $columnName) || preg_match('/vtiger_crmentity:modifiedtime:(\w*\:)*T/', $columnName)) {
 					$columnParts = explode(':', $columnName);
-					$lastKey = count($columnParts)-1;
+					$lastKey = php7_count($columnParts)-1;
 
 					if ($columnParts[$lastKey] == 'T') {
 						$columnParts[$lastKey] = 'DT';
@@ -404,7 +406,7 @@ if (defined('VTIGER_UPGRADE')) {
 			if (!array_key_exists($columnName, $updatedColumnsList)) {
 				if (preg_match('/vtiger_crmentity(\w*):createdtime:(\w*\:)*T/', $columnName) || preg_match('/vtiger_crmentity(\w*):modifiedtime:(\w*\:)*T/', $columnName)) {
 					$columnParts = explode(':', $columnName);
-					$lastKey = count($columnParts)-1;
+					$lastKey = php7_count($columnParts)-1;
 
 					if ($columnParts[$lastKey] == 'T') {
 						$columnParts[$lastKey] = 'DT';

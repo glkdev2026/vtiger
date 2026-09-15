@@ -21,6 +21,7 @@ class PriceBooks_Detail_View extends Vtiger_Detail_View {
 		$relatedModuleName = $request->get('relatedModule');
 		$parentId = $request->get('record');
 		$label = $request->get('tab_label');
+		$productIdsList =array();
 
 		$requestedPage = $request->get('page');
 		if(empty ($requestedPage)) {
@@ -75,7 +76,7 @@ class PriceBooks_Detail_View extends Vtiger_Detail_View {
 		$models = $relationListView->getEntries($pagingModel);
 		$links = $relationListView->getLinks();
 		$header = $relationListView->getHeaders();
-		$noOfEntries = count($models);
+		$noOfEntries = php7_count($models);
 
 		$parentRecordCurrencyId = $parentRecordModel->get('currency_id');
 		if ($parentRecordCurrencyId) {

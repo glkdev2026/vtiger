@@ -1136,7 +1136,7 @@ Vtiger.Class("Vtiger_Detail_Js",{
 			fieldName = multiPicklistFieldName[0];
 		}
 
-		var customHandlingFields = ['owner','ownergroup','picklist','multipicklist','reference','currencyList','text', 'documentsFolder'];
+		var customHandlingFields = ['owner','ownergroup','picklist','multipicklist','reference','currencyList','text', 'documentsFolder', 'url'];
 		if(jQuery.inArray(fieldType, customHandlingFields) !== -1){
 			value = rawValue;
 		}
@@ -2533,8 +2533,8 @@ Vtiger.Class("Vtiger_Detail_Js",{
 	registerRelatedRowClickEvent: function() {
 		var detailContentsHolder = this.getContentHolder();
 		detailContentsHolder.on('click','.relatedListEntryValues a',function(e){
-			e.preventDefault();
-		});
+			e.stopPropagation();
+        });
 		detailContentsHolder.on('click','.listViewEntries',function(e){
 				var selection = window.getSelection().toString();
 			if(selection.length == 0) { 

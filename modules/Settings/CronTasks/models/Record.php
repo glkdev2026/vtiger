@@ -97,7 +97,8 @@ class Settings_CronTasks_Record_Model extends Settings_Vtiger_Record_Model {
 				return $lastScannedTime;
 		    } else {
 				$dateTimeList = explode(" ", $lastScannedTime);
-                return $dateTimeList[0]." ".date('g:i:sa', strtotime($dateTimeList[1]));
+				// hour:min AM/PM in 12 hour format (there is no seconds)
+                return $dateTimeList[0]." ".date('g:i A', strtotime($dateTimeList[1]));
 			}
 		} else {
 			return '';
@@ -135,6 +136,8 @@ class Settings_CronTasks_Record_Model extends Settings_Vtiger_Record_Model {
 									  $fieldLabel = 'LBL_RUNNING';
 								  } else if ($fieldValue === Settings_CronTasks_Record_Model::$STATUS_ENABLED) {
 									  $fieldLabel = 'LBL_ACTIVE';
+								  }  else if ($fieldValue === Vtiger_Cron::$STATUS_ERROR) {
+								      $fieldLabel = 'LBL_ERROR';
 								  } else {
 									  $fieldLabel = 'LBL_INACTIVE';
 								  }

@@ -35,7 +35,7 @@ class Reports_ChartDetail_View extends Vtiger_Index_View {
 		return true;
 	}
 
-	function preProcess(Vtiger_Request $request) {
+	function preProcess(Vtiger_Request $request, $display=true) {
 		$viewer = $this->getViewer($request);
 		$moduleName = $request->getModule();
 		$recordId = $request->get('record');
@@ -139,10 +139,14 @@ class Reports_ChartDetail_View extends Vtiger_Index_View {
 		}
 
 		$isPercentExist = false;
+		$relModuleName = '';
+		$fieldName = '';
 		$selectedDataFields = $reportChartModel->get('datafields');
 		foreach ($selectedDataFields as $dataField) {
-			list($tableName, $columnName, $moduleField, $fieldName, $single) = split(':', $dataField);
-			list($relModuleName, $fieldLabel) = split('_', $moduleField);
+			if (isset($dataField) && substr_count($dataField, ':') >= 4) {
+				list($tableName, $columnName, $moduleField, $fieldName, $single) = explode(':', $dataField);
+				list($relModuleName, $fieldLabel) = explode('_', $moduleField);
+			} 
 			$relModuleModel = Vtiger_Module_Model::getInstance($relModuleName);
 			$fieldModel = Vtiger_Field_Model::getInstance($fieldName, $relModuleModel);
 			if ($fieldModel && $fieldModel->getFieldDataType() != 'currency') {

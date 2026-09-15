@@ -518,6 +518,8 @@ function getListQuery($module, $where = '') {
  */
 
 function setSessionVar($lv_array, $noofrows, $max_ent, $module = '', $related = '') {
+	global $currentModule;
+	
 	$start = '';
 	if ($noofrows >= 1) {
 		$lv_array['start'] = 1;
@@ -672,12 +674,17 @@ function decode_emptyspace_html($str){
 }
 
 function decode_html($str) {
+	// null or blank
+	if (!$str) return $str;
+
 	global $default_charset;
 	// Direct Popup action or Ajax Popup action should be treated the same.
 	if ((isset($_REQUEST['action']) && $_REQUEST['action'] == 'Popup') || (isset($_REQUEST['file']) && $_REQUEST['file'] == 'Popup'))
 		return html_entity_decode($str);
-	else
+	else if ($str)
 		return html_entity_decode($str, ENT_QUOTES, $default_charset);
+	else
+		return $str;
 }
 
 function popup_decode_html($str) {
@@ -690,7 +697,7 @@ function popup_decode_html($str) {
 //function added to check the text length in the listview.
 function textlength_check($field_val) {
 	global $listview_max_textlength, $default_charset;
-	if ($listview_max_textlength && $listview_max_textlength > 0) {
+	if ($field_val && $listview_max_textlength && $listview_max_textlength > 0) {
 		$temp_val = preg_replace("/(<\/?)(\w+)([^>]*>)/i", "", $field_val);
 		if (function_exists('mb_strlen')) {
 			if (mb_strlen(decode_html($temp_val)) > $listview_max_textlength) {
@@ -778,7 +785,7 @@ function listQueryNonAdminChange($query, $module, $scope = '') {
 
 function html_strlen($str) {
 	$chars = preg_split('/(&[^;\s]+;)|/', $str, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
-	return count($chars);
+	return php7_count($chars);
 }
 
 function html_substr($str, $start, $length = NULL) {
@@ -794,7 +801,7 @@ function html_substr($str, $start, $length = NULL) {
 
 	// create our array of characters and html entities
 	$chars = preg_split('/(&[^;\s]+;)|/', $str, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_OFFSET_CAPTURE);
-	$html_length = count($chars);
+	$html_length = php7_count($chars);
 	// check if we can predict the return value and save some processing time
 	if (($html_length === 0) or ($start >= $html_length) or (isset($length) and ($length <= -$html_length)))
 		return "";
